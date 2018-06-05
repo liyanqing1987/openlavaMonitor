@@ -1,0 +1,9 @@
+Thanks for downloading openlavaMonitor.
+
+To install it, make sure you have Python 3.5 or greater installed, you can 
+also install Anaconda3-4.2.0 or greater version to solve packge dependencies. 
+Then run this command from the command prompt:
+
+    python setup.py develop
+
+If you're upgrading from a previous version, you'd better remove it first.

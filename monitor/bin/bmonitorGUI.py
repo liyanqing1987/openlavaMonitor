@@ -1,0 +1,889 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import re
+import sys
+import copy
+import getpass
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QTextEdit, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox
+from PyQt5.QtGui import QPixmap, QBrush, QFont
+from PyQt5.QtCore import Qt
+
+# Import openlavaMonitor packages.
+from monitor.common import common
+from monitor.common import pyqt5_common
+from monitor.conf import config
+from monitor.bin import bmonitor
+
+os.environ['PYTHONUNBUFFERED'] = '1'
+
+user = getpass.getuser()
+
+class mainWindow(QMainWindow):
+    """
+    Main window of openlavaMonitor.
+    """
+    def __init__(self):
+        super().__init__()
+        self.queueList = common.getQueueList()
+        self.hostList = common.getHostList()
+        self.initUI()
+
+    def initUI(self):
+        """
+        Main process, draw the main graphic frame.
+        """
+        # Define main Tab widget
+        self.mainTab = QTabWidget(self)
+        self.setCentralWidget(self.mainTab)
+
+        # Define four sub-tabs (JOB/JOBS/HOSTS/QUEUES)
+        self.jobTab    = QWidget()
+        self.jobsTab   = QWidget()
+        self.hostsTab  = QWidget()
+        self.queuesTab = QWidget()
+
+        # Add the sub-tabs into main Tab widget
+        self.mainTab.addTab(self.jobTab, 'JOB')
+        self.mainTab.addTab(self.jobsTab, 'JOBS')
+        self.mainTab.addTab(self.hostsTab, 'HOSTS')
+        self.mainTab.addTab(self.queuesTab, 'QUEUES')
+
+        # Generate the sub-tabs
+        self.genJobTab()
+        self.genJobsTab()
+        self.genHostsTab()
+        self.genQueuesTab()
+
+        # Show main window
+        self.resize(1000, 600)
+        pyqt5_common.centerWindow(self)
+        self.setWindowTitle('openlavaMonitor')
+        self.show()
+
+
+## Common sub-functions (begin) ##
+    def guiWarning(self, warningMessage):
+        """
+        Show the specified warning message on both of command line and GUI window.
+        """
+        common.printWarning(warningMessage)
+        QMessageBox.warning(self, 'openlavaMonitor Warning', warningMessage)
+## Common sub-functions (end) ##
+
+
+## For job TAB (begin) ## 
+    def genJobTab(self):
+        """
+        Generate the job tab on openlavaMonitor GUI, show job informations.
+        """
+        # Init var
+        self.currentJob = ''
+        self.jobInfoDic = {}
+
+        # self.jobTab
+        self.jobTabFrame0 = QFrame(self.jobTab)
+        self.jobTabFrame1 = QFrame(self.jobTab)
+        self.jobTabFrame2 = QFrame(self.jobTab)
+        self.jobTabFrame3 = QFrame(self.jobTab)
+
+        self.jobTabFrame0.setFrameShadow(QFrame.Raised)
+        self.jobTabFrame0.setFrameShape(QFrame.Box)
+        self.jobTabFrame1.setFrameShadow(QFrame.Raised)
+        self.jobTabFrame1.setFrameShape(QFrame.Box)
+        self.jobTabFrame2.setFrameShadow(QFrame.Raised)
+        self.jobTabFrame2.setFrameShape(QFrame.Box)
+        self.jobTabFrame3.setFrameShadow(QFrame.Raised)
+        self.jobTabFrame3.setFrameShape(QFrame.Box)
+
+        # self.jobTab - Grid
+        jobTabGrid = QGridLayout()
+
+        jobTabGrid.addWidget(self.jobTabFrame0, 0, 0)
+        jobTabGrid.addWidget(self.jobTabFrame1, 1, 0)
+        jobTabGrid.addWidget(self.jobTabFrame2, 2, 0, 1, 2)
+        jobTabGrid.addWidget(self.jobTabFrame3, 0, 1, 2, 1)
+
+        jobTabGrid.setRowStretch(0, 1)
+        jobTabGrid.setRowStretch(1, 1)
+        jobTabGrid.setRowStretch(2, 10)
+        jobTabGrid.setColumnStretch(0, 1)
+        jobTabGrid.setColumnStretch(1, 10)
+
+        jobTabGrid.setColumnMinimumWidth(0, 250)
+
+        self.jobTab.setLayout(jobTabGrid)
+
+        # Generate sub-frames
+        self.genJobTabFrame0()
+        self.genJobTabFrame1()
+        self.genJobTabFrame2()
+        self.genJobTabFrame3()
+
+    def genJobTabFrame0(self):
+        # self.jobTabFrame0
+        jobTabJobLabel = QLabel(self.jobTabFrame0)
+        jobTabJobLabel.setText('Job')
+      
+        self.jobTabJobLine = QLineEdit()
+
+        jobTabCheckButton = QPushButton('Check', self.jobTabFrame0)
+        jobTabCheckButton.clicked.connect(self.checkJob)
+
+        # self.jobTabFrame0 - Grid
+        jobTabFrame0Grid = QGridLayout()
+
+        jobTabFrame0Grid.addWidget(jobTabJobLabel, 0, 0)
+        jobTabFrame0Grid.addWidget(self.jobTabJobLine, 0, 1)
+        jobTabFrame0Grid.addWidget(jobTabCheckButton, 0, 2)
+
+        self.jobTabFrame0.setLayout(jobTabFrame0Grid)
+
+    def genJobTabFrame1(self):
+        # self.jobTabFrame1
+        jobTabUserLabel = QLabel('User', self.jobTabFrame1)
+        self.jobTabUserLine = QLineEdit()
+
+        jobTabStatusLabel = QLabel('Status', self.jobTabFrame1)
+        self.jobTabStatusLine = QLineEdit()
+
+        jobTabQueueLabel = QLabel('Queue', self.jobTabFrame1)
+        self.jobTabQueueLine = QLineEdit()
+
+        jobTabStartedOnLabel = QLabel('Host', self.jobTabFrame1)
+        self.jobTabStartedOnLine = QLineEdit()
+
+        jobTabProcessorsRequestedLabel = QLabel('Processors', self.jobTabFrame1)
+        self.jobTabProcessorsRequestedLine = QLineEdit()
+
+        jobTabCpuTimeLabel = QLabel('Cpu Time', self.jobTabFrame1)
+        self.jobTabCpuTimeLine = QLineEdit()
+
+        jobTabSpanHostsLabel = QLabel('Span Hosts', self.jobTabFrame1)
+        self.jobTabSpanHostsLine = QLineEdit()
+
+        jobTabRusageMemLabel = QLabel('Rusage', self.jobTabFrame1)
+        self.jobTabRusageMemLine = QLineEdit()
+
+        jobTabMemLabel = QLabel('Mem', self.jobTabFrame1)
+        self.jobTabMemLine = QLineEdit()
+
+        # self.jobTabFrame1 - Grid
+        jobTabFrame1Grid = QGridLayout()
+
+        jobTabFrame1Grid.addWidget(jobTabUserLabel, 0, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabUserLine, 0, 1)
+        jobTabFrame1Grid.addWidget(jobTabStatusLabel, 1, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabStatusLine, 1, 1)
+        jobTabFrame1Grid.addWidget(jobTabQueueLabel, 2, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabQueueLine, 2, 1)
+        jobTabFrame1Grid.addWidget(jobTabStartedOnLabel, 3, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabStartedOnLine, 3, 1)
+        jobTabFrame1Grid.addWidget(jobTabProcessorsRequestedLabel, 4, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabProcessorsRequestedLine, 4, 1)
+        jobTabFrame1Grid.addWidget(jobTabCpuTimeLabel, 5, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabCpuTimeLine, 5, 1)
+        jobTabFrame1Grid.addWidget(jobTabSpanHostsLabel, 6, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabSpanHostsLine, 6, 1)
+        jobTabFrame1Grid.addWidget(jobTabRusageMemLabel, 7, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabRusageMemLine, 7, 1)
+        jobTabFrame1Grid.addWidget(jobTabMemLabel, 8, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabMemLine, 8, 1)
+
+        self.jobTabFrame1.setLayout(jobTabFrame1Grid)
+
+    def genJobTabFrame2(self):
+        # self.jobTabFrame2
+        self.jobTabJobInfoText = QTextEdit(self.jobTabFrame2)
+
+        # self.jobTabFrame2 - Grid
+        jobTabFrame2Grid = QGridLayout()
+        jobTabFrame2Grid.addWidget(self.jobTabJobInfoText, 0, 0)
+        self.jobTabFrame2.setLayout(jobTabFrame2Grid)
+
+    def genJobTabFrame3(self):
+        # self.jobTabFram3
+        self.jobTabMemCurveLabel = QLabel('Job memory curve', self.jobTabFrame3)
+        self.jobTabMemCurveLabel.setAlignment(Qt.AlignCenter)
+       
+        # self.jobTabFram3 - Grid
+        jobTabFrame3Grid = QGridLayout()
+        jobTabFrame3Grid.addWidget(self.jobTabMemCurveLabel, 0, 0)
+        self.jobTabFrame3.setLayout(jobTabFrame3Grid)
+
+    def checkJob(self):
+        """
+        Get job information with "bjobs -UF <jobId>", save the infomation into dict self.jobInfoDic.
+        Update self.jobTabFrame1 and self.jobTabFrame3.
+        """
+        # Initicalization
+        self.updateJobTabFrame1(init=True)
+        self.updateJobTabFrame2(init=True)
+        self.updateJobTabFrame3(init=True)
+
+        self.currentJob = self.jobTabJobLine.text().strip()
+
+        # Job name must be a string of numbers.
+        if not re.match('^[0-9]+$', self.currentJob):
+            warningMessage = '*Warning*: No valid job is specified!'
+            self.guiWarning(warningMessage)
+            return
+
+        # Job must be on current RUN/PEND jobs.
+        self.jobInfoDic = common.getBjobsUfInfo(command='bjobs -u all -a -UF')
+        jobList = list(self.jobInfoDic.keys())
+
+        if self.currentJob not in jobList:
+            for job in jobList:
+                if re.match('^' + str(self.currentJob) + '\[', job):
+                    common.printWarning('*Warning*: Find sub-job "' + str(job) + '".')
+            warningMessage = '*Warning*: Not find job "' + str(self.currentJob) + '".'
+            self.guiWarning(warningMessage)
+            return
+
+        # Update the related frames with the job info.
+        self.updateJobTabFrame1()
+        self.updateJobTabFrame2()
+        self.updateJobTabFrame3()
+
+    def updateJobTabFrame1(self, init=False):
+        """
+        Update self.jobTabFrame1 with job infos.
+        """
+        # For "User" item.
+        if init:
+            self.jobTabUserLine.setText('')
+        else: 
+            self.jobTabUserLine.setText(self.jobInfoDic[self.currentJob]['user'])
+            self.jobTabUserLine.setCursorPosition(0)
+
+        # For "Status" item.
+        if init:
+            self.jobTabStatusLine.setText('')
+        else:
+            self.jobTabStatusLine.setText(self.jobInfoDic[self.currentJob]['status'])
+            self.jobTabStatusLine.setCursorPosition(0)
+
+        # For "Queue" item.
+        if init:
+            self.jobTabQueueLine.setText('')
+        else:
+            self.jobTabQueueLine.setText(self.jobInfoDic[self.currentJob]['queue'])
+            self.jobTabQueueLine.setCursorPosition(0)
+
+        # For "Host" item.
+        if init:
+            self.jobTabStartedOnLine.setText('')
+        else:
+            self.jobTabStartedOnLine.setText(self.jobInfoDic[self.currentJob]['startedOn'])
+            self.jobTabStartedOnLine.setCursorPosition(0)
+
+        # For "Processors" item.
+        if init:
+            self.jobTabProcessorsRequestedLine.setText('')
+        else:
+            self.jobTabProcessorsRequestedLine.setText(self.jobInfoDic[self.currentJob]['processorsRequested'])
+            self.jobTabProcessorsRequestedLine.setCursorPosition(0)
+
+        # For "Cpu Time" item.
+        if init:
+            self.jobTabCpuTimeLine.setText('')
+        else:
+            if self.jobInfoDic[self.currentJob]['cpuTime'] != '':
+                self.jobTabCpuTimeLine.setText(self.jobInfoDic[self.currentJob]['cpuTime'] + ' s')
+                self.jobTabCpuTimeLine.setCursorPosition(0)
+
+        # For "Span Hosts" item.
+        if init:
+            self.jobTabSpanHostsLine.setText('')
+        else:
+            self.jobTabSpanHostsLine.setText(self.jobInfoDic[self.currentJob]['spanHosts'])
+            self.jobTabSpanHostsLine.setCursorPosition(0)
+
+        # For "Rusage" item.
+        if init:
+            self.jobTabRusageMemLine.setText('')
+        else:
+            if self.jobInfoDic[self.currentJob]['rusageMem'] != '':
+                self.jobTabRusageMemLine.setText(self.jobInfoDic[self.currentJob]['rusageMem'] + ' M')
+                self.jobTabRusageMemLine.setCursorPosition(0)
+
+        # For "Mem" item.
+        if init:
+            self.jobTabMemLine.setText('')
+        else:
+            if self.jobInfoDic[self.currentJob]['mem'] != '':
+                self.jobTabMemLine.setText(self.jobInfoDic[self.currentJob]['mem'] + ' M')
+                self.jobTabMemLine.setCursorPosition(0)
+
+    def updateJobTabFrame2(self, init=False):
+        """
+        Show job detailed description info on self.jobTabFrame2/self.jobTabJobInfoText.
+        """
+        self.jobTabJobInfoText.clear()
+ 
+        if not init:
+            self.jobTabJobInfoText.insertPlainText(self.jobInfoDic[self.currentJob]['jobInfo'])
+            pyqt5_common.textEditVisiblePosition(self.jobTabJobInfoText, 'Start')
+
+    def updateJobTabFrame3(self, init=False):
+        """
+        Draw memory curve for current job, save the png picture and show it on self.jobTabFrame3.
+        """
+        self.jobTabMemCurveLabel.setText('Job memory curve')
+
+        if not init:
+            if self.jobInfoDic[self.currentJob]['status'] == 'PEND':
+                warningMessage = '*Warning*: "' + str(self.currentJob) + '" is PEND job, cannot draw memory curve for it.'
+                self.guiWarning(warningMessage)
+            else:
+                # Generate memory curve with the specified job id
+                bmonitor.drawJobMemCurve(self.currentJob)
+                memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
+                
+                if os.path.exists(memCurveFig):
+                    pixMap = QPixmap(memCurveFig).scaled(self.jobTabMemCurveLabel.width(), self.jobTabMemCurveLabel.height())
+                    self.jobTabMemCurveLabel.setPixmap(pixMap)
+                else:
+                    warningMessage = '*Warning*: Not find memory curve fig "' + str(memCurveFig) + '".'
+                    self.guiWarning(warningMessage)
+## For job TAB (end) ## 
+
+
+## For jobs TAB (start) ## 
+    def genJobsTab(self):
+        """
+        Generate the jobs tab on openlavaMonitor GUI, show jobs informations.
+        """
+        # self.jobsTab
+        self.jobsTabFrame0 = QFrame(self.jobsTab)
+        self.jobsTabFrame0.setFrameShadow(QFrame.Raised)
+        self.jobsTabFrame0.setFrameShape(QFrame.Box)
+
+        self.jobsTabTable = QTableWidget(self.jobsTab)
+        self.jobsTabTable.itemClicked.connect(self.jobsTabCheckClick)
+
+        # self.jobsTab - Grid
+        jobsTabGrid = QGridLayout()
+
+        jobsTabGrid.addWidget(self.jobsTabFrame0, 0, 0)
+        jobsTabGrid.addWidget(self.jobsTabTable, 1, 0)
+
+        jobsTabGrid.setRowStretch(0, 1)
+        jobsTabGrid.setRowStretch(1, 10)
+
+        self.jobsTab.setLayout(jobsTabGrid)
+
+        # Generate sub-frame
+        self.genJobsTabFrame0()
+        self.genJobsTabTable()
+
+    def setJobsTabStatusCombo(self, statusList=['RUN', 'PEND', 'ALL']):
+        """
+        Set (initialize) self.jobsTabStatusCombo.
+        """
+        self.jobsTabStatusCombo.clear()
+        for status in statusList:
+            self.jobsTabStatusCombo.addItem(status)
+
+    def setJobsTabQueueCombo(self, queueList=[]):
+        """
+        Set (initialize) self.jobsTabQueueCombo.
+        """
+        self.jobsTabQueueCombo.clear()
+        if len(queueList) == 0:
+            queueList = copy.deepcopy(self.queueList)
+            queueList.insert(0, 'ALL')
+        for queue in queueList:
+            self.jobsTabQueueCombo.addItem(queue)
+
+    def setJobsTabStartedOnCombo(self, hostList=[]):
+        """
+        Set (initialize) self.jobsTabStartedOnCombo.
+        """
+        self.jobsTabStartedOnCombo.clear()
+        if len(hostList) == 0:
+            hostList = copy.deepcopy(self.hostList)
+            hostList.insert(0, 'ALL')
+        for host in hostList:
+            self.jobsTabStartedOnCombo.addItem(host)
+
+    def genJobsTabFrame0(self):
+        # self.jobsTabFrame0
+        jobsTabUserLabel = QLabel('User', self.jobsTabFrame0)
+        jobsTabUserLabel.setStyleSheet("font-weight: bold;")
+        self.jobsTabUserLine = QLineEdit()
+
+        jobsTabStatusLabel = QLabel('       Status', self.jobsTabFrame0)
+        jobsTabStatusLabel.setStyleSheet("font-weight: bold;")
+        self.jobsTabStatusCombo = QComboBox(self.jobsTabFrame0)
+        self.setJobsTabStatusCombo()
+
+        jobsTabQueueLabel = QLabel('       Queue', self.jobsTabFrame0)
+        jobsTabQueueLabel.setStyleSheet("font-weight: bold;")
+        self.jobsTabQueueCombo = QComboBox(self.jobsTabFrame0)
+        self.setJobsTabQueueCombo()
+
+        jobsTabStartedOnLabel = QLabel('       Host', self.jobsTabFrame0)
+        jobsTabStartedOnLabel.setStyleSheet("font-weight: bold;")
+        self.jobsTabStartedOnCombo = QComboBox(self.jobsTabFrame0)
+        self.setJobsTabStartedOnCombo()
+
+        jobsTabCheckButton = QPushButton('Check', self.jobsTabFrame0)
+        jobsTabCheckButton.clicked.connect(self.genJobsTabTable)
+
+        # self.jobsTabFrame0 - Grid
+        jobsTabFrame0Grid = QGridLayout()
+
+        jobsTabFrame0Grid.addWidget(jobsTabUserLabel, 0, 0)
+        jobsTabFrame0Grid.addWidget(self.jobsTabUserLine, 0, 1)
+        jobsTabFrame0Grid.addWidget(jobsTabStatusLabel, 0, 2)
+        jobsTabFrame0Grid.addWidget(self.jobsTabStatusCombo, 0, 3)
+        jobsTabFrame0Grid.addWidget(jobsTabQueueLabel, 0, 4)
+        jobsTabFrame0Grid.addWidget(self.jobsTabQueueCombo, 0, 5)
+        jobsTabFrame0Grid.addWidget(jobsTabStartedOnLabel, 0, 6)
+        jobsTabFrame0Grid.addWidget(self.jobsTabStartedOnCombo, 0, 7)
+        jobsTabFrame0Grid.addWidget(jobsTabCheckButton, 0, 8)
+
+        jobsTabFrame0Grid.setColumnStretch(1, 1)
+        jobsTabFrame0Grid.setColumnStretch(3, 1)
+        jobsTabFrame0Grid.setColumnStretch(5, 1)
+        jobsTabFrame0Grid.setColumnStretch(7, 1)
+
+        self.jobsTabFrame0.setLayout(jobsTabFrame0Grid)
+
+    def genJobsTabTable(self):
+        self.jobsTabTable.setShowGrid(True)
+        self.jobsTabTable.setSortingEnabled(True)
+        self.jobsTabTable.setColumnCount(10)
+        self.jobsTabTable.setHorizontalHeaderLabels(['Job', 'User', 'Status', 'Queue', 'Host', 'Processers', 'cpuTime', 'Span Hosts', 'Rusage (M)', 'Mem (M)'])
+
+        command = 'bjobs -UF '
+        user = self.jobsTabUserLine.text().strip()
+
+        if re.match('^\s*$', user):
+            command = str(command) + ' -u all'
+        else:
+            command = str(command) + ' -u ' + str(user)
+
+        queue = self.jobsTabQueueCombo.currentText().strip()
+
+        if queue != 'ALL':
+            command = str(command) + ' -q ' + str(queue) 
+
+        status = self.jobsTabStatusCombo.currentText().strip()
+
+        if status == 'RUN':
+            command = str(command) + ' -r' 
+        elif status == 'PEND':
+            command = str(command) + ' -p'
+        elif status == 'ALL':
+            command = str(command) + ' -a' 
+
+        startedOn = self.jobsTabStartedOnCombo.currentText().strip()
+
+        if startedOn != 'ALL':
+            command = str(command) + ' -m ' + str(startedOn)
+
+        jobDic = common.getBjobsUfInfo(command)
+
+        self.jobsTabTable.setRowCount(len(jobDic.keys()))
+        jobs = list(jobDic.keys())
+
+        for i in range(len(jobs)):
+            job = jobs[i]
+            j = 0
+            self.jobsTabTable.setItem(i, j, QTableWidgetItem(job))
+
+            j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['user'])
+            self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['status'])
+            self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['queue'])
+            self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['startedOn'])
+            self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['processorsRequested']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, int(jobDic[job]['processorsRequested']))
+                self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['cpuTime']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, int(jobDic[job]['cpuTime']))
+                self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['spanHosts']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, int(jobDic[job]['spanHosts']))
+                self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['rusageMem']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, int(jobDic[job]['rusageMem']))
+                self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['mem']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, int(jobDic[job]['mem']))
+                self.jobsTabTable.setItem(i, j, item)
+
+    def jobsTabCheckClick(self, item=None):
+        """
+        With the clicked job, jump the the job Tab, show the job related infos.
+        """
+        if item != None:
+            if item.column() == 0:
+                currentRow = self.jobsTabTable.currentRow()
+                job = self.jobsTabTable.item(currentRow, 0).text().strip()
+                if job != '':
+                    self.jobTabJobLine.setText(job)
+                    self.checkJob()
+                    self.mainTab.setCurrentWidget(self.jobTab)
+## For jobs TAB (end) ## 
+
+
+## For hosts TAB (start) ## 
+    def genHostsTab(self):
+        """
+        Generate the hosts tab on openlavaMonitor GUI, show hosts informations.
+        """
+        # self.hostsTabTable
+        self.hostsTabTable = QTableWidget(self.hostsTab)
+        self.hostsTabTable.itemClicked.connect(self.hostsTabCheckClick)
+
+        # self.hostsTabTable - Grid
+        hostsTabGrid = QGridLayout()
+        hostsTabGrid.addWidget(self.hostsTabTable, 0, 0)
+        self.hostsTab.setLayout(hostsTabGrid)
+
+        # Initial setting
+        self.genHostsTabTable()
+
+    def genHostsTabTable(self):
+        self.hostsTabTable.setShowGrid(True)
+        self.hostsTabTable.setSortingEnabled(True)
+        self.hostsTabTable.setRowCount(len(self.hostList))
+        self.hostsTabTable.setColumnCount(10)
+        self.hostsTabTable.setHorizontalHeaderLabels(['Host', 'Status', 'Queue', 'Njobs', 'Ncpus', 'Ut (%)', 'Mem (G)', 'Maxmem (G)', 'swp (G)', 'maxswp (G)'])
+
+        bhostsDic  = common.getBhostsInfo()
+        lshostsDic = common.getLshostsInfo()
+        lsloadDic  = common.getLsloadInfo()
+        hostQueueDic = common.getHostQueueInfo()
+
+        for i in range(len(self.hostList)):
+            host = self.hostList[i]
+            j = 0
+            self.hostsTabTable.setItem(i, j, QTableWidgetItem(host))
+
+            j = j+1
+            index = bhostsDic['HOST_NAME'].index(host)
+            status = bhostsDic['STATUS'][index]
+            item = QTableWidgetItem(status)
+            if str(status) == 'closed':
+                item.setFont(QFont('song', 10, QFont.Bold))
+                item.setForeground(QBrush(Qt.red))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if host in hostQueueDic.keys():
+                queues = ' '.join(hostQueueDic[host])
+                item = QTableWidgetItem(queues)
+                self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = bhostsDic['HOST_NAME'].index(host)
+            njobs = bhostsDic['NJOBS'][index]
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(njobs))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lshostsDic['HOST_NAME'].index(host)
+            ncpus = lshostsDic['ncpus'][index]
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(ncpus))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lsloadDic['HOST_NAME'].index(host)
+            ut = lsloadDic['ut'][index]
+            ut = re.sub('%', '', ut)
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(ut))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lsloadDic['HOST_NAME'].index(host)
+            mem = lsloadDic['mem'][index]
+            mem = re.sub('M', '', mem)
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(mem))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lshostsDic['HOST_NAME'].index(host)
+            maxmem = lshostsDic['maxmem'][index]
+            maxmem = re.sub('M', '', maxmem)
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(maxmem))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lsloadDic['HOST_NAME'].index(host)
+            swp = lsloadDic['swp'][index]
+            swp = re.sub('M', '', swp)
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(swp))
+            self.hostsTabTable.setItem(i, j, item)
+
+            j = j+1
+            index = lshostsDic['HOST_NAME'].index(host)
+            maxswp = lshostsDic['maxswp'][index]
+            maxswp = re.sub('M', '', maxswp)
+            item = QTableWidgetItem()
+            item.setData(Qt.DisplayRole, int(maxswp))
+            self.hostsTabTable.setItem(i, j, item)
+
+    def hostsTabCheckClick(self, item=None):
+        """
+        If click the host name (or Njobs number), jump to the jobs Tab and show the host related jobs.
+        """
+        if item != None:
+            currentRow = self.hostsTabTable.currentRow()
+            host = self.hostsTabTable.item(currentRow, 0).text().strip()
+            queue = self.hostsTabTable.item(currentRow, 2).text().strip()
+            njobsNum = self.hostsTabTable.item(currentRow, 3).text().strip()
+
+            if (item.column() == 0) or (item.column() == 3):
+                if int(njobsNum) > 0:
+                    self.jobsTabUserLine.setText('')
+                    self.setJobsTabStatusCombo()
+                    self.setJobsTabQueueCombo()
+
+                    hostList = copy.deepcopy(self.hostList)
+                    hostList.remove(host)
+                    hostList.insert(0, host)
+                    hostList.insert(1, 'ALL')
+                    self.setJobsTabStartedOnCombo(hostList)
+
+                    self.genJobsTabTable()
+                    self.mainTab.setCurrentWidget(self.jobsTab)
+            elif item.column() == 2:
+                self.jobsTabUserLine.setText('')
+                self.setJobsTabStatusCombo()
+
+                queueList = copy.deepcopy(self.queueList)
+                queueList.remove(queue) 
+                queueList.insert(0, queue)
+                queueList.insert(1, 'ALL')
+                self.setJobsTabQueueCombo(queueList)
+
+                self.setJobsTabStartedOnCombo()
+                self.mainTab.setCurrentWidget(self.jobsTab)
+## For hosts TAB (end) ## 
+
+
+## For queues TAB (start) ## 
+    def genQueuesTab(self):
+        """
+        Generate the queues tab on openlavaMonitor GUI, show queues informations.
+        """
+        # Init var
+        self.bqueuesFilesDic = {}
+
+        # self.queuesTab
+        self.queuesTabTable = QTableWidget(self.queuesTab)
+        self.queuesTabTable.itemClicked.connect(self.queuesTabCheckClick)
+
+        self.queuesTabFrame0 = QFrame(self.queuesTab)
+        self.queuesTabFrame0.setFrameShadow(QFrame.Raised)
+        self.queuesTabFrame0.setFrameShape(QFrame.Box)
+
+        self.queuesTabFrame1 = QFrame(self.queuesTab)
+        self.queuesTabFrame1.setFrameShadow(QFrame.Raised)
+        self.queuesTabFrame1.setFrameShape(QFrame.Box)
+
+        # self.queuesTab - Grid
+        queuesTabGrid = QGridLayout()
+
+        queuesTabGrid.addWidget(self.queuesTabTable, 0, 0)
+        queuesTabGrid.addWidget(self.queuesTabFrame0, 0, 1)
+        queuesTabGrid.addWidget(self.queuesTabFrame1, 1, 0, 1, 2)
+
+        queuesTabGrid.setRowStretch(0, 1)
+        queuesTabGrid.setRowStretch(1, 10)
+        queuesTabGrid.setColumnStretch(0, 1)
+        queuesTabGrid.setColumnStretch(1, 10)
+
+        queuesTabGrid.setRowMinimumHeight(0, 300)
+        queuesTabGrid.setRowMinimumHeight(1, 200)
+        queuesTabGrid.setColumnMinimumWidth(0, 315)
+        queuesTabGrid.setColumnMinimumWidth(1, 500)
+
+        self.queuesTab.setLayout(queuesTabGrid)
+
+        # Generate sub-frame
+        self.genQueuesTabTable()
+        self.genQueuesTabFrame0()
+        self.genQueuesTabFrame1()
+
+    def genQueuesTabTable(self):
+        self.queuesTabTable.setShowGrid(True)
+        self.queuesTabTable.setColumnCount(3)
+        self.queuesTabTable.setHorizontalHeaderLabels(['QUEUE', 'PEND', 'RUN'])
+
+        queuesDic = common.getBqueuesInfo()
+        self.queuesTabTable.setRowCount(len(self.queueList))
+
+        for i in range(len(self.queueList)):
+            queue = self.queueList[i]
+            index = queuesDic['QUEUE_NAME'].index(queue)
+
+            j = 0
+            item = QTableWidgetItem(queue)
+            self.queuesTabTable.setItem(i, j, item)
+
+            j = j+1
+            pend = queuesDic['PEND'][index]
+            item = QTableWidgetItem(pend)
+            if int(pend) > 0:
+                item.setFont(QFont('song', 10, QFont.Bold))
+                item.setForeground(QBrush(Qt.red))
+            self.queuesTabTable.setItem(i, j, item)
+
+            j = j+1
+            run = queuesDic['RUN'][index]
+            item = QTableWidgetItem(run)
+            self.queuesTabTable.setItem(i, j, item)
+
+    def genQueuesTabFrame0(self):
+        # self.queuesTabFrame0
+        self.queuesTabJobNumCurveLabel = QLabel('queue (PEND/RUN) job number curve', self.queuesTabFrame0)
+        self.queuesTabJobNumCurveLabel.setAlignment(Qt.AlignCenter)
+
+        # self.queuesTabFrame0 - Grid
+        queuesTabFrame0Grid = QGridLayout()
+        queuesTabFrame0Grid.addWidget(self.queuesTabJobNumCurveLabel, 0, 0)
+        self.queuesTabFrame0.setLayout(queuesTabFrame0Grid)
+
+    def genQueuesTabFrame1(self):
+        # self.queuesTabFrame1
+        self.queuesTabText = QTextEdit(self.queuesTabFrame1)
+
+        # self.queuesTabFrame1 - Grid
+        queuesTabFrame1Grid = QGridLayout()
+        queuesTabFrame1Grid.addWidget(self.queuesTabText, 0, 0)
+        self.queuesTabFrame1.setLayout(queuesTabFrame1Grid)
+
+    def queuesTabCheckClick(self, item=None):
+        """
+        If click the queue name, jump to the jobs Tab and show the queue related jobs.
+        If click the PEND number, jump the jobs Tab and show the queue PEND related jobs.
+        If click the RUN number, jump the jobs Tab and show the queue RUN related jobs.
+        """
+        if item != None:
+            currentRow = self.queuesTabTable.currentRow()
+            queue      = self.queuesTabTable.item(currentRow, 0).text().strip()
+            pendNum    = self.queuesTabTable.item(currentRow, 1).text().strip()
+            runNum     = self.queuesTabTable.item(currentRow, 2).text().strip()
+
+            if item.column() == 0:
+                self.updateQueueTabFrame0(queue)
+                self.updateQueueTabFrame1(queue)
+            elif item.column() == 1:
+                if (pendNum != '') and (int(pendNum) > 0):
+                    self.jobsTabUserLine.setText('')
+
+                    statusList = ['PEND', 'RUN', 'ALL']
+                    self.setJobsTabStatusCombo(statusList)
+
+                    queueList = copy.deepcopy(self.queueList)
+                    queueList.remove(queue)
+                    queueList.insert(0, queue)
+                    queueList.insert(1, 'ALL')
+                    self.setJobsTabQueueCombo(queueList)
+
+                    self.setJobsTabStartedOnCombo()
+                    self.genJobsTabTable()
+                    self.mainTab.setCurrentWidget(self.jobsTab)
+            elif item.column() == 2:
+                if (runNum != '') and (int(runNum) > 0):
+                    self.jobsTabUserLine.setText('')
+
+                    statusList = ['RUN', 'PEND', 'ALL']
+                    self.setJobsTabStatusCombo(statusList)
+
+                    queueList = copy.deepcopy(self.queueList)
+                    queueList.remove(queue)
+                    queueList.insert(0, queue)
+                    queueList.insert(1, 'ALL')
+                    self.setJobsTabQueueCombo(queueList)
+
+                    self.setJobsTabStartedOnCombo()
+                    self.genJobsTabTable()
+                    self.mainTab.setCurrentWidget(self.jobsTab)
+
+    def updateQueueTabFrame0(self, queue):
+        """
+        Draw queue (PEND/RUN) job number current job, save the png picture and show it on self.queuesTabFrame0.
+        """
+        self.queuesTabJobNumCurveLabel.setText('queue (PEND/RUN) job number curve')
+
+        # Generate queue job number curve with the specified job id
+        bmonitor.drawQueueJobNumCurve(queue)
+        queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
+        
+        if os.path.exists(queueJobNumCurveFig):
+            pixMap = QPixmap(queueJobNumCurveFig).scaled(self.queuesTabJobNumCurveLabel.width(), self.queuesTabJobNumCurveLabel.height())
+            self.queuesTabJobNumCurveLabel.setPixmap(pixMap)
+        else:
+            warningMessage = '*Warning*: Not find queue job number curve fig "' + str(queueJobNumCurveFig) + '".'
+            self.guiWarning(warningMessage)
+
+    def updateQueueTabFrame1(self, queue):
+        """
+        Show queue detailed informations on self.queuesTabText.
+        """
+        self.queuesTabText.clear()
+
+        command = 'bqueues -l ' + str(queue)
+        lines = os.popen(command).readlines()                                                                                                    
+
+        for line in lines:
+            self.queuesTabText.insertPlainText(line)
+
+        pyqt5_common.textEditVisiblePosition(self.queuesTabText, 'Start')
+## For queues TAB (end) ## 
+
+
+#################
+# Main Function #
+#################
+def main():
+    print('Loading openlava status, please wait a moment ...')
+    app = QApplication(sys.argv)
+    mw = mainWindow()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()

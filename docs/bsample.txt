@@ -1,0 +1,15 @@
+Below is the usage of bsample.py.
+
+
+usage: bsample.py [-h] [-j] [-q] [-H] [-u]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -j, --job    Sample running job info with command "bjobs -u all -r -UF".
+  -q, --queue  Sample queue info with command "bqueues".
+  -H, --host   Sample host info with command "bhosts/lshosts/lsload".
+  -u, --user   Sample user info with command "busers".
+
+
+It is used to sample openlava data for job/queue/host/user.
+Now only --job/--queue are supported, --host/--user will be supported on next version.
