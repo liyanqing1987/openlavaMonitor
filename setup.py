@@ -67,11 +67,11 @@ setup(
     version='0.1',
     python_requires='>={}.{}'.format(*REQUIRED_PYTHON),
     author='yanqing.li',
-    author_email='openlavaMonitor@163.com',
+    author_email='liyanqing1987@163.com',
     description=('openlavaMonitor is an open source software for openlava '
                  'data-collection, date-analysis and information display.'),
     long_description=read('README.md'),
-    license='BSD',
+    license='MIT',
     packages=find_packages(),
     include_package_data=True,
     scripts=[],
