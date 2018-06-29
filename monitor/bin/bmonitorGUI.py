@@ -1,9 +1,10 @@
-#!/usr/bin/env python
+#!PYTHONPATH
 # -*- coding: utf-8 -*-
 
 import os
 import re
 import sys
+import stat
 import copy
 import getpass
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QTextEdit, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox
@@ -11,6 +12,9 @@ from PyQt5.QtGui import QPixmap, QBrush, QFont
 from PyQt5.QtCore import Qt
 
 # Import openlavaMonitor packages.
+if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
+    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
+
 from monitor.common import common
 from monitor.common import pyqt5_common
 from monitor.conf import config
@@ -19,6 +23,13 @@ from monitor.bin import bmonitor
 os.environ['PYTHONUNBUFFERED'] = '1'
 
 user = getpass.getuser()
+
+# Solve some unexpected warning message.
+if 'XDG_RUNTIME_DIR' not in os.environ:
+    os.environ['XDG_RUNTIME_DIR'] = '/tmp/runtime-' + str(user)
+    if not os.path.exists(os.environ['XDG_RUNTIME_DIR']):
+        os.makedirs(os.environ['XDG_RUNTIME_DIR'])
+    os.chmod(os.environ['XDG_RUNTIME_DIR'], stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
 
 class mainWindow(QMainWindow):
     """
@@ -57,7 +68,7 @@ class mainWindow(QMainWindow):
         self.genQueuesTab()
 
         # Show main window
-        self.resize(1000, 600)
+        self.resize(1111, 620)
         pyqt5_common.centerWindow(self)
         self.setWindowTitle('openlavaMonitor')
         self.show()
@@ -112,6 +123,7 @@ class mainWindow(QMainWindow):
         jobTabGrid.setColumnStretch(1, 10)
 
         jobTabGrid.setColumnMinimumWidth(0, 250)
+        jobTabGrid.setColumnMinimumWidth(1, 500)
 
         self.jobTab.setLayout(jobTabGrid)
 
@@ -125,7 +137,7 @@ class mainWindow(QMainWindow):
         # self.jobTabFrame0
         jobTabJobLabel = QLabel(self.jobTabFrame0)
         jobTabJobLabel.setText('Job')
-      
+
         self.jobTabJobLine = QLineEdit()
 
         jobTabCheckButton = QPushButton('Check', self.jobTabFrame0)
@@ -206,7 +218,7 @@ class mainWindow(QMainWindow):
         # self.jobTabFram3
         self.jobTabMemCurveLabel = QLabel('Job memory curve', self.jobTabFrame3)
         self.jobTabMemCurveLabel.setAlignment(Qt.AlignCenter)
-       
+
         # self.jobTabFram3 - Grid
         jobTabFrame3Grid = QGridLayout()
         jobTabFrame3Grid.addWidget(self.jobTabMemCurveLabel, 0, 0)
@@ -217,12 +229,13 @@ class mainWindow(QMainWindow):
         Get job information with "bjobs -UF <jobId>", save the infomation into dict self.jobInfoDic.
         Update self.jobTabFrame1 and self.jobTabFrame3.
         """
+        self.currentJob = self.jobTabJobLine.text().strip()
+        print('* Checking job "' + str(self.currentJob) + '".')
+
         # Initicalization
         self.updateJobTabFrame1(init=True)
         self.updateJobTabFrame2(init=True)
         self.updateJobTabFrame3(init=True)
-
-        self.currentJob = self.jobTabJobLine.text().strip()
 
         # Job name must be a string of numbers.
         if not re.match('^[0-9]+$', self.currentJob):
@@ -230,17 +243,9 @@ class mainWindow(QMainWindow):
             self.guiWarning(warningMessage)
             return
 
-        # Job must be on current RUN/PEND jobs.
-        self.jobInfoDic = common.getBjobsUfInfo(command='bjobs -u all -a -UF')
-        jobList = list(self.jobInfoDic.keys())
-
-        if self.currentJob not in jobList:
-            for job in jobList:
-                if re.match('^' + str(self.currentJob) + '\[', job):
-                    common.printWarning('*Warning*: Find sub-job "' + str(job) + '".')
-            warningMessage = '*Warning*: Not find job "' + str(self.currentJob) + '".'
-            self.guiWarning(warningMessage)
-            return
+        # Get job info
+        print('Getting job information for job "' + str(self.currentJob) + '".')
+        self.jobInfoDic = common.getBjobsUfInfo(command='bjobs -UF ' + str(self.currentJob))
 
         # Update the related frames with the job info.
         self.updateJobTabFrame1()
@@ -254,7 +259,7 @@ class mainWindow(QMainWindow):
         # For "User" item.
         if init:
             self.jobTabUserLine.setText('')
-        else: 
+        else:
             self.jobTabUserLine.setText(self.jobInfoDic[self.currentJob]['user'])
             self.jobTabUserLine.setCursorPosition(0)
 
@@ -322,7 +327,7 @@ class mainWindow(QMainWindow):
         Show job detailed description info on self.jobTabFrame2/self.jobTabJobInfoText.
         """
         self.jobTabJobInfoText.clear()
- 
+
         if not init:
             self.jobTabJobInfoText.insertPlainText(self.jobInfoDic[self.currentJob]['jobInfo'])
             pyqt5_common.textEditVisiblePosition(self.jobTabJobInfoText, 'Start')
@@ -341,7 +346,7 @@ class mainWindow(QMainWindow):
                 # Generate memory curve with the specified job id
                 bmonitor.drawJobMemCurve(self.currentJob)
                 memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
-                
+
                 if os.path.exists(memCurveFig):
                     pixMap = QPixmap(memCurveFig).scaled(self.jobTabMemCurveLabel.width(), self.jobTabMemCurveLabel.height())
                     self.jobTabMemCurveLabel.setPixmap(pixMap)
@@ -431,8 +436,7 @@ class mainWindow(QMainWindow):
         self.setJobsTabStartedOnCombo()
 
         jobsTabCheckButton = QPushButton('Check', self.jobsTabFrame0)
-        jobsTabCheckButton.clicked.connect(self.genJobsTabTable)
-
+       
         # self.jobsTabFrame0 - Grid
         jobsTabFrame0Grid = QGridLayout()
 
@@ -470,16 +474,16 @@ class mainWindow(QMainWindow):
         queue = self.jobsTabQueueCombo.currentText().strip()
 
         if queue != 'ALL':
-            command = str(command) + ' -q ' + str(queue) 
+            command = str(command) + ' -q ' + str(queue)
 
         status = self.jobsTabStatusCombo.currentText().strip()
 
         if status == 'RUN':
-            command = str(command) + ' -r' 
+            command = str(command) + ' -r'
         elif status == 'PEND':
             command = str(command) + ' -p'
         elif status == 'ALL':
-            command = str(command) + ' -a' 
+            command = str(command) + ' -a'
 
         startedOn = self.jobsTabStartedOnCombo.currentText().strip()
 
@@ -613,6 +617,9 @@ class mainWindow(QMainWindow):
             j = j+1
             index = bhostsDic['HOST_NAME'].index(host)
             njobs = bhostsDic['NJOBS'][index]
+            if not re.match('^[0-9]+$', njobs):
+                common.printWarning('*Warning*: host(' + str(host) + ') NJOBS info "' + str(njobs) + '": invalid value, reset it to "0".')
+                njobs = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(njobs))
             self.hostsTabTable.setItem(i, j, item)
@@ -620,6 +627,9 @@ class mainWindow(QMainWindow):
             j = j+1
             index = lshostsDic['HOST_NAME'].index(host)
             ncpus = lshostsDic['ncpus'][index]
+            if not re.match('^[0-9]+$', ncpus):
+                common.printWarning('*Warning*: host(' + str(host) + ') ncpus info "' + str(ncpus) + '": invalid value, reset it to "0".')
+                ncpus = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(ncpus))
             self.hostsTabTable.setItem(i, j, item)
@@ -628,6 +638,9 @@ class mainWindow(QMainWindow):
             index = lsloadDic['HOST_NAME'].index(host)
             ut = lsloadDic['ut'][index]
             ut = re.sub('%', '', ut)
+            if not re.match('^[0-9]+$', ut):
+                common.printWarning('*Warning*: host(' + str(host) + ') ut info "' + str(ut) + '": invalid value, reset it to "0".')
+                ut = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(ut))
             self.hostsTabTable.setItem(i, j, item)
@@ -635,7 +648,14 @@ class mainWindow(QMainWindow):
             j = j+1
             index = lsloadDic['HOST_NAME'].index(host)
             mem = lsloadDic['mem'][index]
-            mem = re.sub('M', '', mem)
+            if re.search('M', mem):
+                mem = re.sub('M', '', mem)
+            elif re.search('G', mem):
+                mem = re.sub('G', '', mem)
+                mem = 1024*int(mem)
+            else:
+                common.printWarning('*Warning*: host(' + str(host) + ') mem info "' + str(mem) + '": unrecognized unit, reset it to "0".')
+                mem = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(mem))
             self.hostsTabTable.setItem(i, j, item)
@@ -643,7 +663,14 @@ class mainWindow(QMainWindow):
             j = j+1
             index = lshostsDic['HOST_NAME'].index(host)
             maxmem = lshostsDic['maxmem'][index]
-            maxmem = re.sub('M', '', maxmem)
+            if re.search('M', maxmem):
+                maxmem = re.sub('M', '', maxmem)
+            elif re.search('G', maxmem):
+                maxmem = re.sub('G', '', maxmem)
+                maxmem = 1024*int(maxmem)
+            else:
+                common.printWarning('*Warning*: host(' + str(host) + ') maxmem info "' + str(maxmem) + '": unrecognized unit, reset it to "0".')
+                maxmem = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(maxmem))
             self.hostsTabTable.setItem(i, j, item)
@@ -651,7 +678,14 @@ class mainWindow(QMainWindow):
             j = j+1
             index = lsloadDic['HOST_NAME'].index(host)
             swp = lsloadDic['swp'][index]
-            swp = re.sub('M', '', swp)
+            if re.search('M', swp):
+                swp = re.sub('M', '', swp)
+            elif re.search('G', swp):
+                swp = re.sub('G', '', swp)
+                swp = 1024*int(swp)
+            else:
+                common.printWarning('*Warning*: host(' + str(host) + ') swp info "' + str(swp) + '": unrecognized unit, reset it to "0".')
+                swp = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(swp))
             self.hostsTabTable.setItem(i, j, item)
@@ -659,7 +693,14 @@ class mainWindow(QMainWindow):
             j = j+1
             index = lshostsDic['HOST_NAME'].index(host)
             maxswp = lshostsDic['maxswp'][index]
-            maxswp = re.sub('M', '', maxswp)
+            if re.search('M', maxswp):
+                maxswp = re.sub('M', '', maxswp)
+            elif re.search('G', maxswp):
+                maxswp = re.sub('G', '', maxswp)
+                maxswp = 1024*int(maxswp)
+            else:
+                common.printWarning('*Warning*: host(' + str(host) + ') maxswp info "' + str(maxswp) + '": unrecognized unit, reset it to "0".')
+                maxswp = 0
             item = QTableWidgetItem()
             item.setData(Qt.DisplayRole, int(maxswp))
             self.hostsTabTable.setItem(i, j, item)
@@ -671,7 +712,6 @@ class mainWindow(QMainWindow):
         if item != None:
             currentRow = self.hostsTabTable.currentRow()
             host = self.hostsTabTable.item(currentRow, 0).text().strip()
-            queue = self.hostsTabTable.item(currentRow, 2).text().strip()
             njobsNum = self.hostsTabTable.item(currentRow, 3).text().strip()
 
             if (item.column() == 0) or (item.column() == 3):
@@ -688,15 +728,6 @@ class mainWindow(QMainWindow):
 
                     self.genJobsTabTable()
                     self.mainTab.setCurrentWidget(self.jobsTab)
-            elif item.column() == 2:
-                self.jobsTabUserLine.setText('')
-                self.setJobsTabStatusCombo()
-
-                queueList = copy.deepcopy(self.queueList)
-                queueList.remove(queue) 
-                queueList.insert(0, queue)
-                queueList.insert(1, 'ALL')
-                self.setJobsTabQueueCombo(queueList)
 
                 self.setJobsTabStartedOnCombo()
                 self.mainTab.setCurrentWidget(self.jobsTab)
@@ -735,9 +766,9 @@ class mainWindow(QMainWindow):
         queuesTabGrid.setColumnStretch(0, 1)
         queuesTabGrid.setColumnStretch(1, 10)
 
-        queuesTabGrid.setRowMinimumHeight(0, 300)
-        queuesTabGrid.setRowMinimumHeight(1, 200)
-        queuesTabGrid.setColumnMinimumWidth(0, 315)
+        queuesTabGrid.setRowMinimumHeight(0, 350)
+        queuesTabGrid.setRowMinimumHeight(1, 150)
+        queuesTabGrid.setColumnMinimumWidth(0, 352)
         queuesTabGrid.setColumnMinimumWidth(1, 500)
 
         self.queuesTab.setLayout(queuesTabGrid)
@@ -808,6 +839,7 @@ class mainWindow(QMainWindow):
             runNum     = self.queuesTabTable.item(currentRow, 2).text().strip()
 
             if item.column() == 0:
+                print('* Checking queue "' + str(queue) + '".')
                 self.updateQueueTabFrame0(queue)
                 self.updateQueueTabFrame1(queue)
             elif item.column() == 1:
@@ -852,7 +884,7 @@ class mainWindow(QMainWindow):
         # Generate queue job number curve with the specified job id
         bmonitor.drawQueueJobNumCurve(queue)
         queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
-        
+
         if os.path.exists(queueJobNumCurveFig):
             pixMap = QPixmap(queueJobNumCurveFig).scaled(self.queuesTabJobNumCurveLabel.width(), self.queuesTabJobNumCurveLabel.height())
             self.queuesTabJobNumCurveLabel.setPixmap(pixMap)
@@ -867,7 +899,7 @@ class mainWindow(QMainWindow):
         self.queuesTabText.clear()
 
         command = 'bqueues -l ' + str(queue)
-        lines = os.popen(command).readlines()                                                                                                    
+        lines = os.popen(command).readlines()
 
         for line in lines:
             self.queuesTabText.insertPlainText(line)

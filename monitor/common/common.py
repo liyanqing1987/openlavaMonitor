@@ -2,15 +2,16 @@ import os
 import re
 import collections
 import pexpect
-import datetime
 import stat
+import sqlite3
+import subprocess
 
 def printError(message):
     """
     Print error message with red color.
     """
     print('\033[1;31m' + str(message) + '\033[0m')
-     
+
 def printWarning(message):
     """
     Print warning message with yellow color.
@@ -28,19 +29,31 @@ def getCommandDict(command):
 
     for i in range(len(lines)):
         line = lines[i].strip()
+
+        # Some speciall preprocess.
+        if re.search('lsload', command):
+            line = re.sub('\*', ' ', line)
+
         if i == 0:
             keyList = line.split()
             for key in keyList:
                 myDic[key] = []
         else:
             commandInfo = line.split()
-            for j in range(len(commandInfo)):
+            if len(commandInfo) < len(keyList):
+                printWarning('*Warning*: For command "' + str(command) + '", below info line is incomplate/unexpected.')
+                printWarning('           ' + str(line))
+
+            for j in range(len(keyList)):
                 key = keyList[j]
-                value = commandInfo[j]
+                if j < len(commandInfo):
+                    value = commandInfo[j]
+                else:
+                    value = ''
                 myDic[key].append(value)
-            
+
     return(myDic)
-            
+
 def getBqueuesInfo(command='bqueues -w'):
     """
     Get bqueues info with command 'bqueues'.
@@ -51,7 +64,7 @@ def getBqueuesInfo(command='bqueues -w'):
     """
     bqueuesDic = getCommandDict(command)
     return(bqueuesDic)
-    
+
 def getBhostsInfo(command='bhosts -w'):
     """
     Get bhosts info with command 'bhosts'.
@@ -83,8 +96,20 @@ def getLsloadInfo(command='lsload -w'):
     ====
     """
     lsloadDic = getCommandDict(command)
+
     return(lsloadDic)
-   
+
+def getBusersInfo(command='busers all'):
+    """
+    Get lsload info with command 'busers'.
+    ====
+    USER/GROUP          JL/P    MAX  NJOBS   PEND    RUN  SSUSP  USUSP    RSV 
+    yanqing.li             -      -      0      0      0      0      0      0
+    ====
+    """
+    busersDic = getCommandDict(command)
+    return(busersDic)
+
 def getBjobsUfInfo(command='bjobs -u all -r -UF'):
     """
     Parse job info which are from command 'bjobs -u all -r -UF'.
@@ -107,7 +132,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
     jobCompileDic = {
                      'jobCompile'                 : re.compile('.*Job <([0-9]+(\[[0-9]+\])?)>.*'),
                      'jobNameCompile'             : re.compile('.*Job Name <([^>]+)>.*'),
-                     'userCompile'                : re.compile('.*User <(\w+)>.*'),
+                     'userCompile'                : re.compile('.*User <([^>]+)>.*'),
                      'projectCompile'             : re.compile('.*Project <([^>]+)>.*'),
                      'statusCompile'              : re.compile('.*Status <([A-Z]+)>*'),
                      'queueCompile'               : re.compile('.*Queue <([^>]+)>.*'),
@@ -127,10 +152,13 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
 
     myDic = collections.OrderedDict()
     job = ''
-    lines = os.popen(command).readlines()
+    #lines = os.popen(command).readlines()
+
+    p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    lines = p.stdout.readlines()
 
     for line in lines:
-        line = line.strip()
+        line = str(line.strip(), 'utf-8')
 
         if re.match('Job <' + str(job) + '> is not found', line):
             continue
@@ -179,7 +207,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                     myMatch = jobCompileDic['statusCompile'].match(line)
                     myDic[job]['status'] = myMatch.group(1)
                 if jobCompileDic['queueCompile'].match(line):
-                    myMatch = jobCompileDic['queueCompile'].match(line)                                                                      
+                    myMatch = jobCompileDic['queueCompile'].match(line)
                     myDic[job]['queue'] = myMatch.group(1)
                 if jobCompileDic['commandCompile'].match(line):
                     myMatch = jobCompileDic['commandCompile'].match(line)
@@ -206,14 +234,14 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                     myMatch = jobCompileDic['rusageMemCompile'].match(line)
                     myDic[job]['rusageMem'] = myMatch.group(1)
                 if jobCompileDic['startedOnCompile'].match(line):
-                   myMatch = jobCompileDic['startedOnCompile'].match(line)
-                   startedHost = myMatch.group(2)
-                   startedHost = re.sub('<', '', startedHost)
-                   startedHost = re.sub('>', '', startedHost)
-                   myDic[job]['startedOn'] = startedHost
+                    myMatch = jobCompileDic['startedOnCompile'].match(line)
+                    startedHost = myMatch.group(2)
+                    startedHost = re.sub('<', '', startedHost)
+                    startedHost = re.sub('>', '', startedHost)
+                    myDic[job]['startedOn'] = startedHost
                 if jobCompileDic['startedTimeCompile'].match(line):
-                   myMatch = jobCompileDic['startedTimeCompile'].match(line)
-                   myDic[job]['startedTime'] = myMatch.group(1)
+                    myMatch = jobCompileDic['startedTimeCompile'].match(line)
+                    myDic[job]['startedTime'] = myMatch.group(1)
                 if jobCompileDic['cpuTimeCompile'].match(line):
                     myMatch = jobCompileDic['cpuTimeCompile'].match(line)
                     myDic[job]['cpuTime'] = myMatch.group(1)
@@ -222,7 +250,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                     myDic[job]['mem'] = myMatch.group(1)
 
     return(myDic)
-
+ 
 def getHostList():
     """
     Get all of the hosts.
@@ -230,7 +258,7 @@ def getHostList():
     bhostsDic = getBhostsInfo()
     hostList = bhostsDic['HOST_NAME']
     return(hostList)
-    
+
 def getQueueList():
     """
     Get all of the queues.
@@ -238,6 +266,44 @@ def getQueueList():
     bqueuesDic = getBqueuesInfo()
     queueList = bqueuesDic['QUEUE_NAME']
     return(queueList)
+
+def getHostGroupMembers(hostGroupName):
+    """
+    Get host group members with bmgroup.
+    ====
+    [yanqing.li@nxnode03 openlavaMonitor]$ bmgroup pd
+    GROUP_NAME    HOSTS
+    pd           dm006 dm007 dm010 dm009 dm002 dm003 dm005 
+    ====
+    """
+    hostList = []
+    lines = os.popen('bmgroup ' + str(hostGroupName)).readlines()
+
+    for line in lines:
+        if re.match('^' + str(hostGroupName) + ' .*$', line):
+            myList = line.split()
+            hostList = myList[1:]
+
+    return(hostList)
+
+def getUserGroupMembers(userGroupName):
+    """
+    Get user group members with bugroup.
+    ====
+    [yanqing.li@nxnode03 openlavaMonitor]$ bugroup pd
+    GROUP_NAME    USERS
+    pd           yanqing.li san.zhang si.li
+    ====
+    """
+    userList = []
+    lines = os.popen('bugroup ' + str(userGroupName)).readlines()
+
+    for line in lines:
+        if re.match('^' + str(userGroupName) + ' .*$', line):
+            myList = line.split()
+            userList = myList[1:]
+
+    return(userList)
 
 def getQueueHostInfo():
     """
@@ -259,13 +325,12 @@ def getQueueHostInfo():
             myMatch = hostsCompile.match(line)
             hostsString = myMatch.group(1)
             if re.search('all hosts used by the OpenLava system', hostsString):
-                warningMessage = '*Warning*: openlava have not been configured, all of the hosts are on the same queue, please update openlava configure files first.'
+                warningMessage = '*Warning*: queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.'
                 printWarning(warningMessage)
                 queueHostDic[queue] = getHostList()
             elif re.match('.+/', hostsString):
-                groupName = re.sub('/$', '', hostsString)
-                myDic = getBhostsInfo(command='bhosts ' + str(groupName))
-                queueHostDic[queue] = myDic['HOST_NAME']
+                hostGroupName = re.sub('/$', '', hostsString)
+                queueHostDic[queue] = getHostGroupMembers(hostGroupName)
             else:
                 queueHostDic[queue] = hostsString.split()
 
@@ -296,7 +361,7 @@ def getRemoteProcessInfo(hostName, userName, password):
     The userName must be a Privileged account, so it can ssh all of the openlava hosts.
     """
     processDic = collections.OrderedDict()
-    
+
     # Login specified host with specified userName and password, all process info.
     command = 'ssh -tt ' + str(hostName) + ' -l ' + str(userName) + " 'ps aux'"
     try:
@@ -306,14 +371,14 @@ def getRemoteProcessInfo(hostName, userName, password):
             child.sendline('yes')
     except:
         pass
-        
+
     child.expect(str(userName) + '@' + str(hostName) + "'s password:")
     child.sendline(password)
     child.expect(pexpect.EOF)
-    
+
     output = str(child.before, encoding='utf-8')
     lines = output.split('\n')
-    
+
     for i in range(len(lines)):
         line = lines[i]
         if i == 0:
@@ -326,7 +391,7 @@ def getRemoteProcessInfo(hostName, userName, password):
                 key = keyList[j]
                 value = processInfo[j]
                 processDic[key].append(value)
-                
+
     return(processDic)
 
 def openlavaDebug(debugString):
@@ -336,7 +401,7 @@ def openlavaDebug(debugString):
     if "openlavadebug" in os.environ:
         print('[DEBUG] ' + str(debugString))
 
-def stringToInt(inputString):                                                                                                                                                                                      
+def stringToInt(inputString):
     """
     Switch the input string into ASCII number.
     """
@@ -373,7 +438,7 @@ def drawPlot(xList, yList, xLabel, yLabel, xIsString=False, yUnit='', title='', 
     # Set title.
     if title != '':
         pyplot.title(title)
-  
+
     # Get value info.
     xMin = min(xList)
     xMax = max(xList)
@@ -390,11 +455,12 @@ def drawPlot(xList, yList, xLabel, yLabel, xIsString=False, yUnit='', title='', 
             pyplot.ylim(yMin-1, yMax+1)
         else:
             pyplot.ylim(1.1*yMin-0.1*yMax, 1.1*yMax-0.1*yMin)
+
     # Show the hight/avrage/low value.
     pyplot.text(xMin, yMax, 'peak: ' + str(yMax) + str(yUnit))
 
     # Save fig, or show it.
-    if saveName != '': 
+    if saveName != '':
         fig.savefig(saveName)
         os.chmod(saveName, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)
     else:
@@ -413,7 +479,7 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
         printError(errorMessage)
         return(1)
 
-    colorList = ['blue', 'red', 'green', 'cyan', 'magenta', 'yellow', 'black', 'white']
+    colorList = ['red', 'green', 'yellow', 'cyan', 'magenta', 'blue', 'black', 'white']
 
     # Draw the pickture.
     if xIsString:
@@ -437,9 +503,9 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
     # Set title.
     if title != '':
         pyplot.title(title)
-  
+
     # Save fig, or show it.
-    if saveName != '': 
+    if saveName != '':
         fig.savefig(saveName)
         os.chmod(saveName, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)
     else:
@@ -451,20 +517,164 @@ def getSqlTableList(dbFile):
     """
     tableList = []
 
-    if not os.path.exists(dbFile):
-        printError('*Error*: "' + str(dbFile) + '": No such data base file.')
-    else:
+    if os.path.exists(dbFile):
         conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
-        command = '''SELECT name FROM sqlite_master WHERE type='type' ORDER BY name'''
-        results = curs.execute(command)
+        command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        try:
+            results = curs.execute(command)
+        except Exception as error:
+            printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
         allItems = results.fetchall()
         for item in allItems:
-            (time, mem) = item
-            runTimeList.append(time)
-            memList.append(mem)
+            (key,) = item
+            tableList.append(key)
         curs.close()
         conn.commit()
         conn.close()
 
     return(tableList)
+
+def getSqlTableKeyList(dbFile, tableName):
+    """
+    Get all of the tables from the specified db file.
+    """
+    keyList = []
+
+    if os.path.exists(dbFile):
+        conn = sqlite3.connect(dbFile)
+        curs = conn.cursor()
+        command = "SELECT * FROM '" + str(tableName) + "'"
+        try:
+            curs.execute(command)
+            keyList = [tuple[0] for tuple in curs.description]
+        except Exception as error:
+            printWarning('*Warning*: Failed on getting table key list on dbFile "' + str(dbFile) + '".')
+
+    return(keyList)
+
+def getSqlData(dbFile, tableName, origKeyList=[]):
+    """
+    With specified dbFile-tableName, get all data from specified keyList.
+    """
+    dataDic = {}
+
+    if len(origKeyList) == 0:
+        keyList = getSqlTableKeyList(dbFile, tableName)
+    else:
+        keyList = origKeyList
+
+    for key in keyList:
+        dataDic[key] = []
+
+    if os.path.exists(dbFile):
+        tableList = getSqlTableList(dbFile)
+        if tableName not in tableList:
+            printWarning('*Warning*: "' + str(tableName) + '": No such table on data base file "' + str(dbFile) + '".')
+        else:
+            conn = sqlite3.connect(dbFile)
+            curs = conn.cursor()
+            if len(origKeyList) == 0:
+                command = "SELECT * FROM '" + str(tableName) + "'"
+            else:
+                keyString = ','.join(keyList)
+                command = "SELECT " + str(keyString) + " FROM '" + str(tableName) + "'"
+            try:
+                results = curs.execute(command)
+            except Exception as error:
+                printWarning('*Warning*: Failed on get "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
+            allItems = results.fetchall()
+            for item in allItems:
+                valueList = list(item)
+                for i in range(len(keyList)):
+                    key = keyList[i]
+                    value = valueList[i]
+                    dataDic[key].append(value)
+            curs.close()
+            conn.commit()
+            conn.close()
+
+    return(dataDic)
+
+def dropSqlTable(dbFile, tableName):
+    """
+    Drop table it it exists.
+    """
+    if os.path.exists(dbFile):
+        conn = sqlite3.connect(dbFile)
+        curs = conn.cursor()
+        command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
+        try:
+            curs.execute(command)
+        except Exception as error:
+            printWarning('*Warning*: Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '".')
+        curs.close()
+        conn.commit()
+        conn.close()
+
+def createSqlTable(dbFile, tableName, initString):
+    """
+    Create a table if it not exists, initialization the setting.
+    """
+    conn = sqlite3.connect(dbFile)
+    curs = conn.cursor()
+    command = "CREATE TABLE IF NOT EXISTS '" + str(tableName) + "' " + str(initString)
+    try:
+        curs.execute(command)
+    except Exception as error:
+        printWarning('*Warning*: Failed on creating table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
+    curs.close()
+    conn.commit()
+    conn.close()
+
+def insertIntoSqlTable(dbFile, tableName, valueString):
+    """
+    Insert new value into sql table.
+    """
+    if os.path.exists(dbFile):
+        conn = sqlite3.connect(dbFile)
+        curs = conn.cursor()
+        command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
+        try:
+            curs.execute(command)
+        except Exception as error:
+            printWarning('*Warning*: Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
+        curs.close()
+        conn.commit()
+        conn.close()
+
+def genSqlTableKeyString(keyList):
+    """
+    Switch the input keyList into the sqlite table key string.
+    """
+    keyString = '('
+
+    for i in range(len(keyList)):
+        key = keyList[i]
+        if i == 0:
+            keyString = str(keyString) + "'" + str(key) + "' VARCHAR(255) PRIMARY KEY,"
+        elif i == len(keyList)-1:
+            keyString = str(keyString) + " '" + str(key) + "' VARCHAR(255));"
+        else:
+            keyString = str(keyString) + " '" + str(key) + "' VARCHAR(255),"
+
+    return(keyString)
+
+def genSqlTableValueString(valueList):
+    """
+    Switch the input valueList into the sqlite table value string.
+    """
+    valueString = '('
+
+    for i in range(len(valueList)):
+        value = valueList[i]
+        if re.search("'", str(value)):
+            value = str(value).replace("'", "''")
+        if i == 0:
+            valueString = str(valueString) + "'" + str(value) + "',"
+        elif i == len(valueList)-1:
+            valueString = str(valueString) + " '" + str(value) + "');"
+        else:
+            valueString = str(valueString) + " '" + str(value) + "',"
+
+    return(valueString)

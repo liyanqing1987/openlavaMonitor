@@ -1,12 +1,16 @@
-#!/usr/bin/env python
+#!PYTHONPATH
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import getpass
 import datetime
 import sqlite3
 
 # Import openlavaMonitor packages.
+if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
+    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
+
 from monitor.bin import bmonitorGUI
 from monitor.conf import config
 from monitor.common import common
@@ -19,30 +23,37 @@ def drawJobMemCurve(job):
     """
     Draw memory usage curve for specified job.
     """
-    print('>>> Drawing memory curve for job "' + str(job) + '" ...')
+    print('Drawing memory curve for job "' + str(job) + '".')
 
     runTimeList = []
     memList  = []
 
     dbFile= str(config.dbPath) + '/job.db'
+    jobTableList = common.getSqlTableList(dbFile)
 
     if not os.path.exists(dbFile):
         warningMessage = '*Warning*: No sampling date for job info.'
         common.printWarning(warningMessage)
         return
 
-    conn = sqlite3.connect(dbFile)
-    curs = conn.cursor()
-    command = '''SELECT sampleTime,mem FROM {tableName}'''.format(tableName='job_' + str(job))
-    results = curs.execute(command)
-    allItems = results.fetchall()
-    for item in allItems:
-        (time, mem) = item
-        runTimeList.append(time)
-        memList.append(mem)
-    curs.close()
-    conn.commit()
-    conn.close()
+    tableName = 'job_' + str(job)
+    if tableName not in jobTableList:
+        warningMessage = '*Warning*: No job information for job "' + str(job) + '".'
+        common.printWarning(warningMessage)
+        return
+    else:
+        conn = sqlite3.connect(dbFile)
+        curs = conn.cursor()
+        command = 'SELECT sampleTime,mem FROM ' + str(tableName)
+        results = curs.execute(command)
+        allItems = results.fetchall()
+        for item in allItems:
+            (time, mem) = item
+            runTimeList.append(time)
+            memList.append(mem)
+        curs.close()
+        conn.commit()
+        conn.close()
 
     if len(runTimeList) == 0:
         warningMessage = '*Warning*: No memory information for job "' + str(job) + '".'
@@ -65,16 +76,16 @@ def drawJobMemCurve(job):
             realMemList.append(realMem)
 
         memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(job) + '.png'
-        jobNum = common.stringToInt(job) 
+        jobNum = common.stringToInt(job)
 
-        print('    Save memory curve as "' + str(memCurveFig) + '".')
+        print('Save memory curve as "' + str(memCurveFig) + '".')
         common.drawPlot(realRunTimeList, realMemList, 'runTime (Minitu)', 'memory (G)', yUnit='G', title='job : ' + str(job), saveName=memCurveFig, figureNum=jobNum)
 
 def drawQueueJobNumCurve(queue):
     """
     Draw (PEND/RUN) job number curve for specified queue.
     """
-    print('>>> Drawing queue (PEND/RUN) job num curve for queue "' + str(queue) + '" ...')
+    print('Drawing queue (PEND/RUN) job num curve for queue "' + str(queue) + '".')
 
     dateList = []
     pendList = []
@@ -119,11 +130,10 @@ def drawQueueJobNumCurve(queue):
         return
     else:
         queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
-        queueNum = common.stringToInt(queue) 
+        queueNum = common.stringToInt(queue)
 
-        print('    Save queue (PEND/RUN) job numeber curve as "' + str(queueJobNumCurveFig) + '".')
+        print('Save queue (PEND/RUN) job numeber curve as "' + str(queueJobNumCurveFig) + '".')
         common.drawPlots(dateList, [pendList, runList], 'DATE', 'NUM', ['PEND', 'RUN'], xIsString=True, title='queue : ' + str(queue), saveName=queueJobNumCurveFig, figureNum=queueNum)
-
 
 #################
 # Main Function #
