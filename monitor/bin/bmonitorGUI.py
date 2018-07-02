@@ -768,7 +768,7 @@ class mainWindow(QMainWindow):
 
         queuesTabGrid.setRowMinimumHeight(0, 350)
         queuesTabGrid.setRowMinimumHeight(1, 150)
-        queuesTabGrid.setColumnMinimumWidth(0, 352)
+        queuesTabGrid.setColumnMinimumWidth(0, 328)
         queuesTabGrid.setColumnMinimumWidth(1, 500)
 
         self.queuesTab.setLayout(queuesTabGrid)
@@ -782,6 +782,9 @@ class mainWindow(QMainWindow):
         self.queuesTabTable.setShowGrid(True)
         self.queuesTabTable.setColumnCount(3)
         self.queuesTabTable.setHorizontalHeaderLabels(['QUEUE', 'PEND', 'RUN'])
+
+        # Hide the vertical header.
+        self.queuesTabTable.verticalHeader().setVisible(False)
 
         queuesDic = common.getBqueuesInfo()
         self.queuesTabTable.setRowCount(len(self.queueList))
