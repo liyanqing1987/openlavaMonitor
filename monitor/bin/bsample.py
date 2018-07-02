@@ -124,10 +124,11 @@ class sampling:
             # If job table (with old data) has been on the self.jobDbFile, drop it.
             if jobTableName in jobTableList:
                 dataDic = common.getSqlData(self.jobDbFile, jobTableName, ['SECONDS'])
-                lastSeconds = int(dataDic['SECONDS'][-1])
-                if self.currentSeconds-lastSeconds > 86400:
-                    common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even one day ago, will drop it.')
-                    common.dropSqlTable(self.jobDbFile, jobTableName)
+                if len(dataDic['SECONDS']) > 0:
+                    lastSeconds = int(dataDic['SECONDS'][-1])
+                    if self.currentSeconds-lastSeconds > 86400:
+                        common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even one day ago, will drop it.')
+                        common.dropSqlTable(self.jobDbFile, jobTableName)
 
             # If job table is not on the self.jobDbFile, create it.
             if jobTableName not in jobTableList:
