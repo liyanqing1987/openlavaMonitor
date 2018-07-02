@@ -650,9 +650,9 @@ class mainWindow(QMainWindow):
             mem = lsloadDic['mem'][index]
             if re.search('M', mem):
                 mem = re.sub('M', '', mem)
+                mem = int(mem)/1024
             elif re.search('G', mem):
                 mem = re.sub('G', '', mem)
-                mem = 1024*int(mem)
             else:
                 common.printWarning('*Warning*: host(' + str(host) + ') mem info "' + str(mem) + '": unrecognized unit, reset it to "0".')
                 mem = 0
@@ -665,9 +665,9 @@ class mainWindow(QMainWindow):
             maxmem = lshostsDic['maxmem'][index]
             if re.search('M', maxmem):
                 maxmem = re.sub('M', '', maxmem)
+                maxmem = int(maxmem)/1024
             elif re.search('G', maxmem):
                 maxmem = re.sub('G', '', maxmem)
-                maxmem = 1024*int(maxmem)
             else:
                 common.printWarning('*Warning*: host(' + str(host) + ') maxmem info "' + str(maxmem) + '": unrecognized unit, reset it to "0".')
                 maxmem = 0
@@ -680,9 +680,9 @@ class mainWindow(QMainWindow):
             swp = lsloadDic['swp'][index]
             if re.search('M', swp):
                 swp = re.sub('M', '', swp)
+                swp = int(swp)/1024
             elif re.search('G', swp):
                 swp = re.sub('G', '', swp)
-                swp = 1024*int(swp)
             else:
                 common.printWarning('*Warning*: host(' + str(host) + ') swp info "' + str(swp) + '": unrecognized unit, reset it to "0".')
                 swp = 0
@@ -695,9 +695,9 @@ class mainWindow(QMainWindow):
             maxswp = lshostsDic['maxswp'][index]
             if re.search('M', maxswp):
                 maxswp = re.sub('M', '', maxswp)
+                maxswp = int(maxswp)/1024
             elif re.search('G', maxswp):
                 maxswp = re.sub('G', '', maxswp)
-                maxswp = 1024*int(maxswp)
             else:
                 common.printWarning('*Warning*: host(' + str(host) + ') maxswp info "' + str(maxswp) + '": unrecognized unit, reset it to "0".')
                 maxswp = 0
