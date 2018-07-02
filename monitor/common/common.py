@@ -581,15 +581,15 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
                 command = "SELECT " + str(keyString) + " FROM '" + str(tableName) + "'"
             try:
                 results = curs.execute(command)
+                allItems = results.fetchall()
+                for item in allItems:
+                    valueList = list(item)
+                    for i in range(len(keyList)):
+                        key = keyList[i]
+                        value = valueList[i]
+                        dataDic[key].append(value)
             except Exception as error:
                 printWarning('*Warning*: Failed on get "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
-            allItems = results.fetchall()
-            for item in allItems:
-                valueList = list(item)
-                for i in range(len(keyList)):
-                    key = keyList[i]
-                    value = valueList[i]
-                    dataDic[key].append(value)
             curs.close()
             conn.commit()
             conn.close()
