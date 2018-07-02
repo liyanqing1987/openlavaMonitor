@@ -523,12 +523,10 @@ def getSqlTableList(dbFile):
         command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
         try:
             results = curs.execute(command)
-        except Exception as error:
-            printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
-        allItems = results.fetchall()
-        for item in allItems:
-            (key,) = item
-            tableList.append(key)
+            allItems = results.fetchall()
+            for item in allItems:
+                (key,) = item
+                tableList.append(key)
         curs.close()
         conn.commit()
         conn.close()
@@ -569,6 +567,8 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
 
     if os.path.exists(dbFile):
         tableList = getSqlTableList(dbFile)
+        except Exception as error:
+            printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
         if tableName not in tableList:
             printWarning('*Warning*: "' + str(tableName) + '": No such table on data base file "' + str(dbFile) + '".')
         else:
