@@ -461,7 +461,7 @@ class mainWindow(QMainWindow):
         self.jobsTabTable.setShowGrid(True)
         self.jobsTabTable.setSortingEnabled(True)
         self.jobsTabTable.setColumnCount(10)
-        self.jobsTabTable.setHorizontalHeaderLabels(['Job', 'User', 'Status', 'Queue', 'Host', 'Processers', 'cpuTime', 'Span Hosts', 'Rusage (M)', 'Mem (M)'])
+        self.jobsTabTable.setHorizontalHeaderLabels(['Job', 'User', 'Status', 'Queue', 'Host', 'Processers', 'cpuTime', 'Span Hosts', 'Rusage (G)', 'Mem (G)'])
 
         command = 'bjobs -UF '
         user = self.jobsTabUserLine.text().strip()
@@ -541,13 +541,15 @@ class mainWindow(QMainWindow):
             j = j+1
             if str(jobDic[job]['rusageMem']) != '':
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, int(jobDic[job]['rusageMem']))
+                rusageMemValue = int(jobDic[job]['rusageMem'])/1024
+                item.setData(Qt.DisplayRole, int(rusageMemValue))
                 self.jobsTabTable.setItem(i, j, item)
 
             j = j+1
             if str(jobDic[job]['mem']) != '':
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, int(jobDic[job]['mem']))
+                memValue = int(jobDic[job]['mem'])/1024
+                item.setData(Qt.DisplayRole, int(memValue))
                 self.jobsTabTable.setItem(i, j, item)
 
     def jobsTabCheckClick(self, item=None):
