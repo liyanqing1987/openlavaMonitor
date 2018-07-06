@@ -527,6 +527,8 @@ def getSqlTableList(dbFile):
             for item in allItems:
                 (key,) = item
                 tableList.append(key)
+        except Exception as error:
+            printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
         curs.close()
         conn.commit()
         conn.close()
