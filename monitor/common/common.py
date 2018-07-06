@@ -569,8 +569,6 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
 
     if os.path.exists(dbFile):
         tableList = getSqlTableList(dbFile)
-        except Exception as error:
-            printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
         if tableName not in tableList:
             printWarning('*Warning*: "' + str(tableName) + '": No such table on data base file "' + str(dbFile) + '".')
         else:
