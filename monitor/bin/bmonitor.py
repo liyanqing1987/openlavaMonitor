@@ -29,36 +29,28 @@ def drawJobMemCurve(job):
     memList  = []
 
     dbFile= str(config.dbPath) + '/job.db'
-    jobTableList = common.getSqlTableList(dbFile)
 
     if not os.path.exists(dbFile):
         warningMessage = '*Warning*: No sampling date for job info.'
         common.printWarning(warningMessage)
-        return
+        return()
 
+    jobTableList = common.getSqlTableList(dbFile)
     tableName = 'job_' + str(job)
+
     if tableName not in jobTableList:
         warningMessage = '*Warning*: No job information for job "' + str(job) + '".'
         common.printWarning(warningMessage)
-        return
+        return()
     else:
-        conn = sqlite3.connect(dbFile)
-        curs = conn.cursor()
-        command = 'SELECT sampleTime,mem FROM ' + str(tableName)
-        results = curs.execute(command)
-        allItems = results.fetchall()
-        for item in allItems:
-            (time, mem) = item
-            runTimeList.append(time)
-            memList.append(mem)
-        curs.close()
-        conn.commit()
-        conn.close()
+        dataDic = common.getSqlData(dbFile, tableName, origKeyList=['sampleTime', 'mem'])
+        runTimeList = dataDic['sampleTime']
+        memList = dataDic['mem']
 
     if len(runTimeList) == 0:
         warningMessage = '*Warning*: No memory information for job "' + str(job) + '".'
         common.printWarning(warningMessage)
-        return
+        return()
     else:
         realRunTimeList = []
         realMemList = []
@@ -94,40 +86,48 @@ def drawQueueJobNumCurve(queue):
     tempRunList = []
 
     dbFile= str(config.dbPath) + '/queue.db'
+
     if not os.path.exists(dbFile):
         warningMessage = '*Warning*: No sampling date for queue info.'
         common.printWarning(warningMessage)
-        return
+        return()
 
-    conn = sqlite3.connect(dbFile)
-    curs = conn.cursor()
-    command = '''SELECT DATE,PEND,RUN FROM {tableName} WHERE QUEUE_NAME='{queueName}' '''.format(tableName='queue_' + str(queue), queueName=queue)
-    results = curs.execute(command)
-    allItems = results.fetchall()
-    for i in range(len(allItems)):
-        (date, pendNum, runNum) = allItems[i]
+    queueTableList = common.getSqlTableList(dbFile)
+    tableName = 'queue_' + str(queue)
 
-        if (i != 0) and ((i == len(allItems)-1) or (date not in dateList)):
-            pendAvg = int(sum(tempPendList)/len(tempPendList))
-            pendList.append(pendAvg)
-            runAvg = int(sum(tempRunList)/len(tempRunList))
-            runList.append(runAvg)
+    if tableName not in queueTableList:
+        warningMessage = '*Warning*: No queue information for queue "' + str(queue) + '".'
+        common.printWarning(warningMessage)
+        return()
+    else:
+        dataDic = common.getSqlData(dbFile, tableName, origKeyList=['DATE', 'PEND', 'RUN'])
+        origDateList = dataDic['DATE']
+        origPendList = dataDic['PEND']
+        origRunList = dataDic['RUN']
 
-        if date not in dateList:
-            dateList.append(date)
-            tempPendList = []
-            tempRunList = []
+        for i in range(len(origDateList)):
+            date = origDateList[i]
+            pendNum = origPendList[i]
+            runNum = origRunList[i]
 
-        tempPendList.append(int(pendNum))
-        tempRunList.append(int(runNum))
-    curs.close()
-    conn.commit()
-    conn.close()
+            if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
+                pendAvg = int(sum(tempPendList)/len(tempPendList))
+                pendList.append(pendAvg)
+                runAvg = int(sum(tempRunList)/len(tempRunList))
+                runList.append(runAvg)
+
+            if date not in dateList:
+                dateList.append(date)
+                tempPendList = []
+                tempRunList = []
+
+            tempPendList.append(int(pendNum))
+            tempRunList.append(int(runNum))
 
     if len(dateList) == 0:
         warningMessage = '*Warning*: No (PEND/RUN) job number info for queue "' + str(queue) + '".'
         common.printWarning(warningMessage)
-        return
+        return()
     else:
         queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
         queueNum = common.stringToInt(queue)
