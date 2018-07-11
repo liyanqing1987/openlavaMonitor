@@ -521,6 +521,7 @@ def getSqlTableList(dbFile):
         conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
         command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+
         try:
             results = curs.execute(command)
             allItems = results.fetchall()
@@ -529,6 +530,7 @@ def getSqlTableList(dbFile):
                 tableList.append(key)
         except Exception as error:
             printWarning('*Warning*: Failed on getting table list on dbFile "' + str(dbFile) + '".')
+
         curs.close()
         conn.commit()
         conn.close()
@@ -545,6 +547,7 @@ def getSqlTableKeyList(dbFile, tableName):
         conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
         command = "SELECT * FROM '" + str(tableName) + "'"
+
         try:
             curs.execute(command)
             keyList = [tuple[0] for tuple in curs.description]
@@ -574,11 +577,15 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
         else:
             conn = sqlite3.connect(dbFile)
             curs = conn.cursor()
+            keyString = ''
+
             if len(origKeyList) == 0:
-                command = "SELECT * FROM '" + str(tableName) + "'"
+                keyString = '*'
             else:
                 keyString = ','.join(keyList)
-                command = "SELECT " + str(keyString) + " FROM '" + str(tableName) + "'"
+
+            command = "SELECT " + str(keyString) + " FROM '" + str(tableName) + "'"
+
             try:
                 results = curs.execute(command)
                 allItems = results.fetchall()
@@ -589,7 +596,8 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
                         value = valueList[i]
                         dataDic[key].append(value)
             except Exception as error:
-                printWarning('*Warning*: Failed on get "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
+                printWarning('*Warning*: Failed on getting "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
+
             curs.close()
             conn.commit()
             conn.close()
@@ -604,10 +612,12 @@ def dropSqlTable(dbFile, tableName):
         conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
         command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
+
         try:
             curs.execute(command)
         except Exception as error:
             printWarning('*Warning*: Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '".')
+
         curs.close()
         conn.commit()
         conn.close()
@@ -619,10 +629,12 @@ def createSqlTable(dbFile, tableName, initString):
     conn = sqlite3.connect(dbFile)
     curs = conn.cursor()
     command = "CREATE TABLE IF NOT EXISTS '" + str(tableName) + "' " + str(initString)
+
     try:
         curs.execute(command)
     except Exception as error:
         printWarning('*Warning*: Failed on creating table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
+
     curs.close()
     conn.commit()
     conn.close()
@@ -635,10 +647,12 @@ def insertIntoSqlTable(dbFile, tableName, valueString):
         conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
         command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
+
         try:
             curs.execute(command)
         except Exception as error:
             printWarning('*Warning*: Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
+
         curs.close()
         conn.commit()
         conn.close()
