@@ -124,6 +124,12 @@ def drawQueueJobNumCurve(queue):
             tempPendList.append(int(pendNum))
             tempRunList.append(int(runNum))
 
+    # Cut dateList/pendList/runList, only save 15 days result.
+    if len(dateList) > 16:
+        dateList = dateList[-16:-1]
+        pendList = pendList[-16:-1]
+        runList = runList[-16:-1]
+
     if len(dateList) == 0:
         warningMessage = '*Warning*: No (PEND/RUN) job number info for queue "' + str(queue) + '".'
         common.printWarning(warningMessage)
