@@ -46,6 +46,8 @@ else:
             print('        tempPath    = "' + str(tempPath) + '"')
             CF.write('tempPath    = "' + str(tempPath) + '"\n')
         os.chmod(configFile, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+        os.chmod(dbPath, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+        os.chmod(tempPath, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
     except Exception as error:
         print('*Error*: Failed on opening config file "' + str(configFile) + '" for write: ' + str(error))
         sys.exit(1)
