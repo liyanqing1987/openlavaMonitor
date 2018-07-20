@@ -562,29 +562,25 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
     """
     dataDic = {}
 
-    if len(origKeyList) == 0:
-        keyList = getSqlTableKeyList(dbFile, tableName)
-    else:
-        keyList = origKeyList
-
-    for key in keyList:
-        dataDic[key] = []
-
     if os.path.exists(dbFile):
         tableList = getSqlTableList(dbFile)
         if tableName not in tableList:
-            printWarning('*Warning*: "' + str(tableName) + '": No such table on data base file "' + str(dbFile) + '".')
+            printError('*Error*: "' + str(tableName) + '": No such table on database file "' + str(dbFile) + '".')
+            return(dataDic)
         else:
+            keyList = getSqlTableKeyList(dbFile, tableName)
+
+            for key in origKeyList:
+                if key not in keyList:
+                    printError('*Error*: key "' + str(key) + '" is not on database "' + str(dbFile) + '" table "' + str(tableName) + '".')
+                    return(dataDic)
+
+            for key in keyList:
+                dataDic[key] = []
+
             conn = sqlite3.connect(dbFile)
             curs = conn.cursor()
-            keyString = ''
-
-            if len(origKeyList) == 0:
-                keyString = '*'
-            else:
-                keyString = ','.join(keyList)
-
-            command = "SELECT " + str(keyString) + " FROM '" + str(tableName) + "'"
+            command = "SELECT * FROM '" + str(tableName) + "'"
 
             try:
                 results = curs.execute(command)
@@ -596,14 +592,19 @@ def getSqlData(dbFile, tableName, origKeyList=[]):
                         value = valueList[i]
                         dataDic[key].append(value)
             except Exception as error:
-                printWarning('*Warning*: Failed on getting "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
+                printError('*Error*: Failed on getting "' + str(keyString) + '" infos from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
 
             curs.close()
             conn.commit()
             conn.close()
 
-    return(dataDic)
+    if len(origKeyList) > 0:
+        for key in keyList:
+            if key not in origKeyList:
+               del dataDic[key]
 
+    return(dataDic)
+          
 def dropSqlTable(dbFile, tableName):
     """
     Drop table it it exists.
