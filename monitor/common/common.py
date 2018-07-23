@@ -554,6 +554,10 @@ def getSqlTableKeyList(dbFile, tableName):
         except Exception as error:
             printWarning('*Warning*: Failed on getting table key list on dbFile "' + str(dbFile) + '".')
 
+        curs.close()
+        conn.commit()
+        conn.close()
+
     return(keyList)
 
 def getSqlData(dbFile, tableName, origKeyList=[]):
