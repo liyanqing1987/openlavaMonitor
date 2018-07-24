@@ -731,7 +731,6 @@ class mainWindow(QMainWindow):
                     self.genJobsTabTable()
                     self.mainTab.setCurrentWidget(self.jobsTab)
 
-                self.setJobsTabStartedOnCombo()
                 self.mainTab.setCurrentWidget(self.jobsTab)
 ## For hosts TAB (end) ## 
 

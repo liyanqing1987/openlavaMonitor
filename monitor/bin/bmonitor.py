@@ -35,23 +35,16 @@ def drawJobMemCurve(job):
         common.printWarning(warningMessage)
         return()
 
-    jobTableList = common.getSqlTableList(dbFile)
     tableName = 'job_' + str(job)
+    dataDic = common.getSqlData(dbFile, tableName, origKeyList=['sampleTime', 'mem'])
 
-    if tableName not in jobTableList:
-        warningMessage = '*Warning*: No job information for job "' + str(job) + '".'
-        common.printWarning(warningMessage)
-        return()
-    else:
-        dataDic = common.getSqlData(dbFile, tableName, origKeyList=['sampleTime', 'mem'])
-        runTimeList = dataDic['sampleTime']
-        memList = dataDic['mem']
-
-    if len(runTimeList) == 0:
+    if not dataDic:
         warningMessage = '*Warning*: No memory information for job "' + str(job) + '".'
         common.printWarning(warningMessage)
         return()
     else:
+        runTimeList = dataDic['sampleTime']
+        memList = dataDic['mem']
         realRunTimeList = []
         realMemList = []
         firstRunTime = datetime.datetime.strptime(str(runTimeList[0]), '%Y%m%d_%H%M%S').timestamp()
@@ -92,37 +85,30 @@ def drawQueueJobNumCurve(queue):
         common.printWarning(warningMessage)
         return()
 
-    queueTableList = common.getSqlTableList(dbFile)
     tableName = 'queue_' + str(queue)
+    dataDic = common.getSqlData(dbFile, tableName, origKeyList=['DATE', 'PEND', 'RUN'])
+    origDateList = dataDic['DATE']
+    origPendList = dataDic['PEND']
+    origRunList = dataDic['RUN']
 
-    if tableName not in queueTableList:
-        warningMessage = '*Warning*: No queue information for queue "' + str(queue) + '".'
-        common.printWarning(warningMessage)
-        return()
-    else:
-        dataDic = common.getSqlData(dbFile, tableName, origKeyList=['DATE', 'PEND', 'RUN'])
-        origDateList = dataDic['DATE']
-        origPendList = dataDic['PEND']
-        origRunList = dataDic['RUN']
+    for i in range(len(origDateList)):
+        date = origDateList[i]
+        pendNum = origPendList[i]
+        runNum = origRunList[i]
 
-        for i in range(len(origDateList)):
-            date = origDateList[i]
-            pendNum = origPendList[i]
-            runNum = origRunList[i]
+        if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
+            pendAvg = int(sum(tempPendList)/len(tempPendList))
+            pendList.append(pendAvg)
+            runAvg = int(sum(tempRunList)/len(tempRunList))
+            runList.append(runAvg)
 
-            if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
-                pendAvg = int(sum(tempPendList)/len(tempPendList))
-                pendList.append(pendAvg)
-                runAvg = int(sum(tempRunList)/len(tempRunList))
-                runList.append(runAvg)
+        if date not in dateList:
+            dateList.append(date)
+            tempPendList = []
+            tempRunList = []
 
-            if date not in dateList:
-                dateList.append(date)
-                tempPendList = []
-                tempRunList = []
-
-            tempPendList.append(int(pendNum))
-            tempRunList.append(int(runNum))
+        tempPendList.append(int(pendNum))
+        tempRunList.append(int(runNum))
 
     # Cut dateList/pendList/runList, only save 15 days result.a
     if len(dateList) > 15:
