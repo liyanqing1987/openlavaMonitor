@@ -1,4 +1,4 @@
-#!PYTHONPATH
+#!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -19,7 +19,7 @@ os.environ["PYTHONUNBUFFERED"]="1"
 
 user = getpass.getuser()
 
-def drawJobMemCurve(job):
+def drawJobMemCurve(jobDbFile, jobDbCurs, job):
     """
     Draw memory usage curve for specified job.
     """
@@ -28,20 +28,20 @@ def drawJobMemCurve(job):
     runTimeList = []
     memList  = []
 
-    dbFile= str(config.dbPath) + '/job.db'
-
-    if not os.path.exists(dbFile):
-        warningMessage = '*Warning*: No sampling date for job info.'
-        common.printWarning(warningMessage)
-        return()
+    if jobDbCurs == '':
+        if os.path.exists(jobDbFile):
+            jobDbConn = sqlite3.connect(jobDbFile)
+            jobDbCurs = jobDbConn.curser()
+        else:
+            common.printWarning('*Warning*: job database file "' + str(jobDbFile) + '" is missing, cannot find job related infomation.')
+            return
 
     tableName = 'job_' + str(job)
-    dataDic = common.getSqlData(dbFile, tableName, origKeyList=['sampleTime', 'mem'])
+    dataDic = common.getSqlTableData(jobDbFile, jobDbCurs, tableName, ['sampleTime', 'mem'])
 
     if not dataDic:
-        warningMessage = '*Warning*: No memory information for job "' + str(job) + '".'
-        common.printWarning(warningMessage)
-        return()
+        common.printWarning('*Warning*: job information is missing for "' + str(job) + '".')
+        return
     else:
         runTimeList = dataDic['sampleTime']
         memList = dataDic['mem']
@@ -66,7 +66,7 @@ def drawJobMemCurve(job):
         print('Save memory curve as "' + str(memCurveFig) + '".')
         common.drawPlot(realRunTimeList, realMemList, 'runTime (Minitu)', 'memory (G)', yUnit='G', title='job : ' + str(job), saveName=memCurveFig, figureNum=jobNum)
 
-def drawQueueJobNumCurve(queue):
+def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
     """
     Draw (PEND/RUN) job number curve for specified queue.
     """
@@ -78,54 +78,59 @@ def drawQueueJobNumCurve(queue):
     tempPendList = []
     tempRunList = []
 
-    dbFile= str(config.dbPath) + '/queue.db'
-
-    if not os.path.exists(dbFile):
-        warningMessage = '*Warning*: No sampling date for queue info.'
-        common.printWarning(warningMessage)
-        return()
+    if queueDbCurs == '':
+        if os.path.exists(queueDbFile):
+            queueDbConn = sqlite3.connect(queueDbFile)
+            queueDbCurs = queueDbConn.curser()
+        else:
+            common.printWarning('*Warning*: queue database file "' + str(queueDbFile) + '" is missing, cannot find queue related information.')
+            return
 
     tableName = 'queue_' + str(queue)
-    dataDic = common.getSqlData(dbFile, tableName, origKeyList=['DATE', 'PEND', 'RUN'])
-    origDateList = dataDic['DATE']
-    origPendList = dataDic['PEND']
-    origRunList = dataDic['RUN']
+    dataDic = common.getSqlTableData(queueDbFile, queueDbCurs, tableName, ['DATE', 'PEND', 'RUN'])
 
-    for i in range(len(origDateList)):
-        date = origDateList[i]
-        pendNum = origPendList[i]
-        runNum = origRunList[i]
-
-        if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
-            pendAvg = int(sum(tempPendList)/len(tempPendList))
-            pendList.append(pendAvg)
-            runAvg = int(sum(tempRunList)/len(tempRunList))
-            runList.append(runAvg)
-
-        if date not in dateList:
-            dateList.append(date)
-            tempPendList = []
-            tempRunList = []
-
-        tempPendList.append(int(pendNum))
-        tempRunList.append(int(runNum))
-
-    # Cut dateList/pendList/runList, only save 15 days result.a
-    if len(dateList) > 15:
-        dateList = dateList[-15:]
-        pendList = pendList[-15:]
-        runList = runList[-15:]
-
-    if len(dateList) == 0:
-        warningMessage = '*Warning*: No (PEND/RUN) job number info for queue "' + str(queue) + '".'
-        common.printWarning(warningMessage)
-        return()
+    if not dataDic:
+        common.printWarning('*Warning*: queue information is missing for "' + str(queue) + '".')
+        return
     else:
-        queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
-        queueNum = common.stringToInt(queue)
+        origDateList = dataDic['DATE']
+        origPendList = dataDic['PEND']
+        origRunList = dataDic['RUN']
 
-        print('Save queue (PEND/RUN) job numeber curve as "' + str(queueJobNumCurveFig) + '".')
-        common.drawPlots(dateList, [pendList, runList], 'DATE', 'NUM', ['PEND', 'RUN'], xIsString=True, title='queue : ' + str(queue), saveName=queueJobNumCurveFig, figureNum=queueNum)
+        for i in range(len(origDateList)):
+            date = origDateList[i]
+            pendNum = origPendList[i]
+            runNum = origRunList[i]
+
+            if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
+                pendAvg = int(sum(tempPendList)/len(tempPendList))
+                pendList.append(pendAvg)
+                runAvg = int(sum(tempRunList)/len(tempRunList))
+                runList.append(runAvg)
+
+            if date not in dateList:
+                dateList.append(date)
+                tempPendList = []
+                tempRunList = []
+
+            tempPendList.append(int(pendNum))
+            tempRunList.append(int(runNum))
+
+        # Cut dateList/pendList/runList, only save 15 days result.a
+        if len(dateList) > 15:
+            dateList = dateList[-15:]
+            pendList = pendList[-15:]
+            runList = runList[-15:]
+
+        if len(dateList) == 0:
+            common.printWarning('*Warning*: PEND/RUN job number information is missing for queue "' + str(queue) + '".')
+            return
+        else:
+            queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
+            queueNum = common.stringToInt(queue)
+
+            print('Save queue PEND/RUN job numeber curve as "' + str(queueJobNumCurveFig) + '".')
+            common.drawPlots(dateList, [pendList, runList], 'DATE', 'NUM', ['PEND', 'RUN'], xIsString=True, title='queue : ' + str(queue), saveName=queueJobNumCurveFig, figureNum=queueNum)
 
 #################
 # Main Function #

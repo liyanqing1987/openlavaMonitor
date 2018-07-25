@@ -1,4 +1,4 @@
-#!PYTHONPATH
+#!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -7,6 +7,7 @@ import sys
 import stat
 import copy
 import getpass
+import sqlite3
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QTextEdit, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox
 from PyQt5.QtGui import QPixmap, QBrush, QFont
 from PyQt5.QtCore import Qt
@@ -39,6 +40,12 @@ class mainWindow(QMainWindow):
         super().__init__()
         self.queueList = common.getQueueList()
         self.hostList = common.getHostList()
+        self.jobDbFile= str(config.dbPath) + '/job.db'
+        self.jobDbConn = sqlite3.connect(self.jobDbFile)
+        self.jobDbCurs = self.jobDbConn.cursor()
+        self.queueDbFile= str(config.dbPath) + '/queue.db'
+        self.queueDbConn = sqlite3.connect(self.queueDbFile)
+        self.queueDbCurs = self.queueDbConn.cursor()
         self.initUI()
 
     def initUI(self):
@@ -344,7 +351,7 @@ class mainWindow(QMainWindow):
                 self.guiWarning(warningMessage)
             else:
                 # Generate memory curve with the specified job id
-                bmonitor.drawJobMemCurve(self.currentJob)
+                bmonitor.drawJobMemCurve(self.jobDbFile, self.jobDbCurs, self.currentJob)
                 memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
 
                 if os.path.exists(memCurveFig):
@@ -731,6 +738,7 @@ class mainWindow(QMainWindow):
                     self.genJobsTabTable()
                     self.mainTab.setCurrentWidget(self.jobsTab)
 
+                self.setJobsTabStartedOnCombo()
                 self.mainTab.setCurrentWidget(self.jobsTab)
 ## For hosts TAB (end) ## 
 
@@ -886,7 +894,7 @@ class mainWindow(QMainWindow):
         self.queuesTabJobNumCurveLabel.setText('queue (PEND/RUN) job number curve')
 
         # Generate queue job number curve with the specified job id
-        bmonitor.drawQueueJobNumCurve(queue)
+        bmonitor.drawQueueJobNumCurve(self.queueDbFile, self.queueDbCurs, queue)
         queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
 
         if os.path.exists(queueJobNumCurveFig):
@@ -911,6 +919,17 @@ class mainWindow(QMainWindow):
         pyqt5_common.textEditVisiblePosition(self.queuesTabText, 'Start')
 ## For queues TAB (end) ## 
 
+
+    def closeEvent(self, QCloseEvent):
+        """
+        When window close, dis-connect database file connection.
+        """
+        self.jobDbCurs.close()
+        self.jobDbConn.close()
+        self.queueDbCurs.close()
+        self.queueDbConn.close()
+
+        print('Bye')
 
 #################
 # Main Function #

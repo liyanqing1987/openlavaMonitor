@@ -41,7 +41,7 @@ def getCommandDict(command):
         else:
             commandInfo = line.split()
             if len(commandInfo) < len(keyList):
-                printWarning('*Warning* (getCommandDict) : For command "' + str(command) + '", below info line is incomplate/unexpected.')
+                printWarning('*Warning*: For command "' + str(command) + '", below info line is incomplate/unexpected.')
                 printWarning('           ' + str(line))
 
             for j in range(len(keyList)):
@@ -325,7 +325,8 @@ def getQueueHostInfo():
             myMatch = hostsCompile.match(line)
             hostsString = myMatch.group(1)
             if re.search('all hosts used by the OpenLava system', hostsString):
-                printWarning('*Warning* (getQueueHostInfo) : queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.')
+                warningMessage = '*Warning*: queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.'
+                printWarning(warningMessage)
                 queueHostDic[queue] = getHostList()
             elif re.match('.+/', hostsString):
                 hostGroupName = re.sub('/$', '', hostsString)
@@ -474,7 +475,7 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
     fig = pyplot.figure(figureNum)
 
     if len(yLists) > 8:
-        errorMessage = '*Error* (drawPlots) : For function "draw_plots", the length of yLists cannot be bigger than 8!'
+        errorMessage = '*Error*: For function "draw_plots", the length of yLists cannot be bigger than 8!'
         printError(errorMessage)
         return(1)
 
@@ -510,114 +511,169 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
     else:
         fig.show()
 
-def getSqlTableList(dbFile):
+def getSqlTableList(dbFile, curs):
     """
     Get all of the tables from the specified db file.
     """
     tableList = []
 
-    if os.path.exists(dbFile):
-        try:
+    if curs == '':
+        if os.path.exists(dbFile):
             conn = sqlite3.connect(dbFile)
             curs = conn.cursor()
-            command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-            results = curs.execute(command)
-            allItems = results.fetchall()
-            for item in allItems:
-                (key,) = item
-                tableList.append(key)
+        else:
+            printError('*Error* (getSqlTableList) : "' + str(dbFile) + '" No such database file.')
+            return(tableList)
+
+    try:
+        command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        results = curs.execute(command)
+        allItems = results.fetchall()
+        for item in allItems:
+            (key,) = item
+            tableList.append(key)
+        if curs == '':
             curs.close()
-            conn.commit()
             conn.close()
-        except Exception as error:
-            printError('*Error* (getSqlTableList) : Failed on getting table list on dbFile "' + str(dbFile) + '".')
+    except Exception as error:
+        printError('*Error* (getSqlTableList) : Failed on getting table list on dbFile "' + str(dbFile) + '".')
 
     return(tableList)
 
-def getSqlData(dbFile, tableName, origKeyList=[]):
+def getSqlTableKeyList(dbFile, curs, tableName):
+    """
+    Get all of the tables from the specified db file.
+    """
+    keyList = []
+
+    if curs == '':
+        if os.path.exists(dbFile):
+            conn = sqlite3.connect(dbFile)
+            curs = conn.cursor()
+        else:
+            printError('*Error* (getSqlTableKeyList) : "' + str(dbFile) + '" No such database file.')
+            return(keyList)
+
+    try:
+        command = "SELECT * FROM '" + str(tableName) + "'"
+        curs.execute(command)
+        keyList = [tuple[0] for tuple in curs.description]
+        if curs == '':
+            curs.close()
+            conn.close()
+    except Exception as error:
+        printError('*Error* (getSqlTableKeyList) : Failed on getting table key list on dbFile "' + str(dbFile) + '".')
+
+    return(keyList)
+
+def getSqlTableData(dbFile, curs, tableName, keyList=[]):
     """
     With specified dbFile-tableName, get all data from specified keyList.
     """
     dataDic = {}
 
-    if os.path.exists(dbFile):
-        try:
+    if curs == '':
+        if os.path.exists(dbFile):
             conn = sqlite3.connect(dbFile)
             curs = conn.cursor()
-            command = "SELECT * FROM '" + str(tableName) + "'"
-            results = curs.execute(command)
-            allItems = results.fetchall()
-            keyList = [tuple[0] for tuple in curs.description]
+        else:
+            printError('*Error* (getSqlTableData) : "' + str(dbFile) + '" No such database file.')
+            return(dataDic)
+
+    try:
+        command = "SELECT * FROM '" + str(tableName) + "'"
+        results = curs.execute(command)
+        allItems = results.fetchall()
+        tableKeyList = [tuple[0] for tuple in curs.description]
+        if curs == '':
             curs.close()
-            conn.commit()
             conn.close()
 
-            for key in origKeyList:
-                if key not in keyList:
-                    printError('*Error* (getSqlData) : "' + str(key) + '": invalid key on specified key list.')
-                    return(dataDic)
+        for key in keyList:
+            if key not in tableKeyList:
+                printError('*Error* (getSqlTableData) : "' + str(key) + '": invalid key on specified key list.')
+                return(dataDic)
 
-            for item in allItems:
-                valueList = list(item)
-                for i in range(len(keyList)):
-                    key = keyList[i]
-                    if key in origKeyList:
-                        value = valueList[i]
-                        if key in dataDic.keys():
-                            dataDic[key].append(value)
-                        else:
-                            dataDic[key]=[value,]
-        except Exception as error:
-            printError('*Error* (getSqlData) : Failed on getting table info from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
+        for item in allItems:
+            valueList = list(item)
+            for i in range(len(tableKeyList)):
+                key = tableKeyList[i]
+                if key in keyList:
+                    value = valueList[i]
+                    if key in dataDic.keys():
+                        dataDic[key].append(value)
+                    else:
+                        dataDic[key]=[value,]
+    except Exception as error:
+        printError('*Error* (getSqlTableData) : Failed on getting table info from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '".')
 
     return(dataDic)
 
-def dropSqlTable(dbFile, tableName):
+def dropSqlTable(dbFile, conn, tableName):
     """
     Drop table it it exists.
     """
-    if os.path.exists(dbFile):
-        try:
+    if conn == '':
+        if os.path.exists(dbFile):
             conn = sqlite3.connect(dbFile)
-            curs = conn.cursor()
-            command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
-            curs.execute(command)
-            curs.close()
-            conn.commit()
-            conn.close()
-        except Exception as error:
-            printErro('*Error* (dropSqlTable) : Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '".')
+        else:
+            printError('*Error* (dropSqlTable) : "' + str(dbFile) + '" No such database file.')
+            return
 
-def createSqlTable(dbFile, tableName, initString):
+    try:
+        curs = conn.cursor()
+        command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
+        curs.execute(command)
+        curs.close()
+        conn.commit()
+        if conn == '':
+            conn.close()
+    except Exception as error:
+        printError('*Error* (dropSqlTable) : Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '".')
+
+def createSqlTable(dbFile, conn, tableName, initString):
     """
     Create a table if it not exists, initialization the setting.
     """
+    if conn == '':
+        if os.path.exists(dbFile):
+            conn = sqlite3.connect(dbFile)
+        else:
+            printError('*Error* (createSqlTable) : "' + str(dbFile) + '" No such database file.')
+            return
+
     try:
-        conn = sqlite3.connect(dbFile)
         curs = conn.cursor()
         command = "CREATE TABLE IF NOT EXISTS '" + str(tableName) + "' " + str(initString)
         curs.execute(command)
         curs.close()
         conn.commit()
-        conn.close()
+        if conn == '':
+            conn.close()
     except Exception as error:
         printError('*Error* (createSqlTable) : Failed on creating table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
-def insertIntoSqlTable(dbFile, tableName, valueString):
+def insertIntoSqlTable(dbFile, conn, tableName, valueString):
     """
     Insert new value into sql table.
     """
-    if os.path.exists(dbFile):
-        try:
+    if conn == '':
+        if os.path.exists(dbFile):
             conn = sqlite3.connect(dbFile)
-            curs = conn.cursor()
-            command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
-            curs.execute(command)
-            curs.close()
-            conn.commit()
+        else:
+            printError('*Error* (insertIntoSqlTable) : "' + str(dbFile) + '" No such database file.')
+            return
+
+    try:
+        curs = conn.cursor()
+        command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
+        curs.execute(command)
+        curs.close()
+        conn.commit()
+        if conn == '':
             conn.close()
-        except Exception as error:
-            printError('*Error* (insertIntoSqlTable) : Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
+    except Exception as error:
+        printError('*Error* (insertIntoSqlTable) : Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
 def genSqlTableKeyString(keyList):
     """

@@ -1,4 +1,4 @@
-#!PYTHONPATH
+#!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -7,6 +7,7 @@ import argparse
 import datetime
 import time
 import copy
+import sqlite3
 from multiprocessing import Process
 
 # Import openlavaMonitor packages.
@@ -63,14 +64,9 @@ class sampling:
         self.hostSampling = hostSampling
         self.loadSampling = loadSampling
         self.userSampling = userSampling
-        self.interval = interval
 
+        self.interval = interval
         self.dbPath = config.dbPath
-        self.jobDbFile = str(self.dbPath) + '/job.db'
-        self.queueDbFile = str(self.dbPath) + '/queue.db'
-        self.hostDbFile = str(self.dbPath) + '/host.db'
-        self.loadDbFile = str(self.dbPath) + '/load.db'
-        self.userDbFile = str(self.dbPath) + '/user.db'
 
     def getDateInfo(self):
         self.currentDate = datetime.datetime.today().strftime('%Y%m%d')
@@ -104,10 +100,13 @@ class sampling:
         Sample job info, especially the memory usage info.
         """
         self.getDateInfo()
+        self.jobDbFile = str(self.dbPath) + '/job.db'
+        self.jobDbConn = sqlite3.connect(self.jobDbFile)
+        self.jobDbCurs = self.jobDbConn.cursor()
 
         print('>>> Sampling job info into ' + str(self.jobDbFile) + ' ...')
 
-        jobTableList = common.getSqlTableList(self.jobDbFile)
+        jobTableList = common.getSqlTableList(self.jobDbFile, self.jobDbCurs)
         bjobsDic = common.getBjobsUfInfo()
         jobList = list(bjobsDic.keys())
 
@@ -123,32 +122,39 @@ class sampling:
 
             # If job table (with old data) has been on the self.jobDbFile, drop it.
             if jobTableName in jobTableList:
-                dataDic = common.getSqlData(self.jobDbFile, jobTableName, ['SECONDS'])
-                if len(dataDic['SECONDS']) > 0:
-                    lastSeconds = int(dataDic['SECONDS'][-1])
-                    if self.currentSeconds-lastSeconds > 86400:
-                        common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even one day ago, will drop it.')
-                        common.dropSqlTable(self.jobDbFile, jobTableName)
+                dataDic = common.getSqlTableData(self.jobDbFile, self.jobDbCurs, jobTableName, ['SECONDS'])
+                if dataDic:
+                    if len(dataDic['SECONDS']) > 0:
+                        lastSeconds = int(dataDic['SECONDS'][-1])
+                        if self.currentSeconds-lastSeconds > 864000:
+                            common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even ten day ago, will drop it.')
+                            common.dropSqlTable(self.jobDbFile, self.jobDbCurs, jobTableName)
 
             # If job table is not on the self.jobDbFile, create it.
             if jobTableName not in jobTableList:
                 keyList = self.addKeyDateInfo(keyList)
                 keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.jobDbFile, jobTableName, keyString)
+                common.createSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, keyString)
 
             # Insert sql table value.
             valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.jobDbFile, jobTableName, valueString)
+            common.insertIntoSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, valueString)
+
+        self.jobDbCurs.close()
+        self.jobDbConn.close()
 
     def sampleQueueInfo(self):
         """
         Sample queue info and save it into sqlite db.
         """
         self.getDateInfo()
+        self.queueDbFile = str(self.dbPath) + '/queue.db'
+        self.queueDbConn = sqlite3.connect(self.queueDbFile)
+        self.queueDbCurs = self.queueDbConn.cursor()
 
         print('>>> Sampling queue info into ' + str(self.queueDbFile) + ' ...')
 
-        queueTableList = common.getSqlTableList(self.queueDbFile)
+        queueTableList = common.getSqlTableList(self.queueDbFile, self.queueDbCurs)
         bqueuesDic = common.getBqueuesInfo()
         queueList = bqueuesDic['QUEUE_NAME']
         queueHostDic = common.getQueueHostInfo()
@@ -178,21 +184,27 @@ class sampling:
             # Generate sql table.
             if queueTableName not in queueTableList:
                 keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.queueDbFile, queueTableName, keyString)
+                common.createSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, keyString)
 
             # Insert sql table value.
             valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.queueDbFile, queueTableName, valueString)
+            common.insertIntoSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, valueString)
+
+        self.queueDbCurs.close()
+        self.queueDbConn.close()
 
     def sampleHostInfo(self):
         """
         Sample host info and save it into sqlite db.
         """
         self.getDateInfo()
+        self.hostDbFile = str(self.dbPath) + '/host.db'
+        self.hostDbConn = sqlite3.connect(self.hostDbFile)
+        self.hostDbCurs = self.hostDbConn.cursor()
 
         print('>>> Sampling host info into ' + str(self.hostDbFile) + ' ...')
 
-        hostTableList = common.getSqlTableList(self.hostDbFile)
+        hostTableList = common.getSqlTableList(self.hostDbFile, self.hostDbCurs)
         bhostsDic = common.getBhostsInfo()
         hostList = bhostsDic['HOST_NAME']
 
@@ -215,21 +227,27 @@ class sampling:
             # Generate sql table.
             if hostTableName not in hostTableList:
                 keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.hostDbFile, hostTableName, keyString)
+                common.createSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, keyString)
 
             # Insert sql table value.
             valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.hostDbFile, hostTableName, valueString)
+            common.insertIntoSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, valueString)
+
+        self.hostDbCurs.close()
+        self.hostDbConn.close()
 
     def sampleLoadInfo(self):
         """
         Sample host load info and save it into sqlite db.
         """
         self.getDateInfo()
+        self.loadDbFile = str(self.dbPath) + '/load.db'
+        self.loadDbConn = sqlite3.connect(self.loadDbFile)
+        self.loadDbCurs = self.loadDbConn.cursor()
 
         print('>>> Sampling host load info into ' + str(self.loadDbFile) + ' ...')
 
-        loadTableList = common.getSqlTableList(self.loadDbFile)
+        loadTableList = common.getSqlTableList(self.loadDbFile, self.loadDbCurs)
         lsloadDic = common.getLsloadInfo()
         hostList = lsloadDic['HOST_NAME']
 
@@ -252,21 +270,27 @@ class sampling:
             # Generate sql table.
             if loadTableName not in loadTableList:
                 keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.loadDbFile, loadTableName, keyString)
+                common.createSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, keyString)
 
             # Insert sql table value.
             valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.loadDbFile, loadTableName, valueString)
+            common.insertIntoSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, valueString)
+
+        self.loadDbCurs.close()
+        self.loadDbConn.close()
 
     def sampleUserInfo(self):
         """
         Sample user info and save it into sqlite db.
         """
         self.getDateInfo()
+        self.userDbFile = str(self.dbPath) + '/user.db'
+        self.userDbConn = sqlite3.connect(self.userDbFile)
+        self.userDbCurs = self.userDbConn.cursor()
 
         print('>>> Sampling user info into ' + str(self.userDbFile) + ' ...')
 
-        userTableList = common.getSqlTableList(self.userDbFile)
+        userTableList = common.getSqlTableList(self.userDbFile, self.userDbCurs)
         busersDic = common.getBusersInfo()
         userList = busersDic['USER/GROUP']
 
@@ -289,11 +313,14 @@ class sampling:
             # Generate sql table.
             if userTableName not in userTableList:
                 keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.userDbFile, userTableName, keyString)
+                common.createSqlTable(self.userDbFile, self.userDbConn, userTableName, keyString)
 
             # Insert sql table value.
             valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.userDbFile, userTableName, valueString)
+            common.insertIntoSqlTable(self.userDbFile, self.userDbConn, userTableName, valueString)
+
+        self.userDbCurs.close()
+        self.userDbConn.close()
 
     def sampling(self):
         while True:
