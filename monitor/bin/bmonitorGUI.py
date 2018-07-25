@@ -443,6 +443,7 @@ class mainWindow(QMainWindow):
         self.setJobsTabStartedOnCombo()
 
         jobsTabCheckButton = QPushButton('Check', self.jobsTabFrame0)
+        jobsTabCheckButton.clicked.connect(self.genJobsTabTable)
        
         # self.jobsTabFrame0 - Grid
         jobsTabFrame0Grid = QGridLayout()
@@ -738,7 +739,6 @@ class mainWindow(QMainWindow):
                     self.genJobsTabTable()
                     self.mainTab.setCurrentWidget(self.jobsTab)
 
-                self.setJobsTabStartedOnCombo()
                 self.mainTab.setCurrentWidget(self.jobsTab)
 ## For hosts TAB (end) ## 
 

@@ -41,7 +41,7 @@ def getCommandDict(command):
         else:
             commandInfo = line.split()
             if len(commandInfo) < len(keyList):
-                printWarning('*Warning*: For command "' + str(command) + '", below info line is incomplate/unexpected.')
+                printWarning('*Warning* (getCommandDict) : For command "' + str(command) + '", below info line is incomplate/unexpected.')
                 printWarning('           ' + str(line))
 
             for j in range(len(keyList)):
@@ -325,8 +325,7 @@ def getQueueHostInfo():
             myMatch = hostsCompile.match(line)
             hostsString = myMatch.group(1)
             if re.search('all hosts used by the OpenLava system', hostsString):
-                warningMessage = '*Warning*: queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.'
-                printWarning(warningMessage)
+                printWarning('*Warning* (getQueueHostInfo) : queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.')
                 queueHostDic[queue] = getHostList()
             elif re.match('.+/', hostsString):
                 hostGroupName = re.sub('/$', '', hostsString)
@@ -475,8 +474,7 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
     fig = pyplot.figure(figureNum)
 
     if len(yLists) > 8:
-        errorMessage = '*Error*: For function "draw_plots", the length of yLists cannot be bigger than 8!'
-        printError(errorMessage)
+        printError('*Error* (drawPlots) : For function "draw_plots", the length of yLists cannot be bigger than 8!')
         return(1)
 
     colorList = ['red', 'green', 'yellow', 'cyan', 'magenta', 'blue', 'black', 'white']

@@ -1,6 +1,7 @@
 This documentation is a simple description for the "monitor" directory.
 Three sub-directories under "monitor" directory, below are the simple description.
 
+
 monitor/bin:
 Most of the real execution files are on "monitor/bin" direcotry.
 
@@ -32,6 +33,7 @@ The configuration file is on "monitor/conf" directory.
     installPath: openlavaMonitor installation path.
     dbPath: data base path to save the openlava information.
     tempPath: tempPath to save the temporary files.
+
 
 NOTICE:
 This tool is still not fully tested with 0.1 version, welcome have a try with it,
