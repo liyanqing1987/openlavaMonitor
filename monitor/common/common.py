@@ -587,10 +587,13 @@ def getSqlTableData(dbFile, curs, tableName, keyList=[]):
             curs.close()
             conn.close()
 
-        for key in keyList:
-            if key not in tableKeyList:
-                printError('*Error* (getSqlTableData) : "' + str(key) + '": invalid key on specified key list.')
-                return(dataDic)
+        if len(keyList) == 0:
+            keyList = tableKeyList
+        else:
+            for key in keyList:
+                if key not in tableKeyList:
+                    printError('*Error* (getSqlTableData) : "' + str(key) + '": invalid key on specified key list.')
+                    return(dataDic)
 
         for item in allItems:
             valueList = list(item)
