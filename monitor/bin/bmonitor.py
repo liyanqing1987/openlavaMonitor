@@ -32,7 +32,7 @@ def drawJobMemCurve(jobDbFile, jobDbCurs, job):
     if jobDbCurs == '':
         if os.path.exists(jobDbFile):
             jobDbConn = sqlite3.connect(jobDbFile)
-            jobDbCurs = jobDbConn.curser()
+            jobDbCurs = jobDbConn.cursor()
         else:
             common.printWarning('*Warning*: job database file "' + str(jobDbFile) + '" is missing, cannot find job related infomation.')
             return
@@ -82,7 +82,7 @@ def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
     if queueDbCurs == '':
         if os.path.exists(queueDbFile):
             queueDbConn = sqlite3.connect(queueDbFile)
-            queueDbCurs = queueDbConn.curser()
+            queueDbCurs = queueDbConn.cursor()
         else:
             common.printWarning('*Warning*: queue database file "' + str(queueDbFile) + '" is missing, cannot find queue related information.')
             return
