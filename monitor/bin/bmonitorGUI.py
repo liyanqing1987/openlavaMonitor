@@ -17,6 +17,7 @@ if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.envi
     sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
 
 from monitor.common import common
+from monitor.common import openlava_common
 from monitor.common import pyqt5_common
 from monitor.conf import config
 from monitor.bin import bmonitor
@@ -38,8 +39,8 @@ class mainWindow(QMainWindow):
     """
     def __init__(self):
         super().__init__()
-        self.queueList = common.getQueueList()
-        self.hostList = common.getHostList()
+        self.queueList = openlava_common.getQueueList()
+        self.hostList = openlava_common.getHostList()
         self.jobDbFile= str(config.dbPath) + '/job.db'
         self.jobDbConn = sqlite3.connect(self.jobDbFile)
         self.jobDbCurs = self.jobDbConn.cursor()
@@ -252,7 +253,7 @@ class mainWindow(QMainWindow):
 
         # Get job info
         print('Getting job information for job "' + str(self.currentJob) + '".')
-        self.jobInfoDic = common.getBjobsUfInfo(command='bjobs -UF ' + str(self.currentJob))
+        self.jobInfoDic = openlava_common.getBjobsUfInfo(command='bjobs -UF ' + str(self.currentJob))
 
         # Update the related frames with the job info.
         self.updateJobTabFrame1()
@@ -498,7 +499,7 @@ class mainWindow(QMainWindow):
         if startedOn != 'ALL':
             command = str(command) + ' -m ' + str(startedOn)
 
-        jobDic = common.getBjobsUfInfo(command)
+        jobDic = openlava_common.getBjobsUfInfo(command)
 
         self.jobsTabTable.setRowCount(len(jobDic.keys()))
         jobs = list(jobDic.keys())
@@ -599,10 +600,10 @@ class mainWindow(QMainWindow):
         self.hostsTabTable.setColumnCount(10)
         self.hostsTabTable.setHorizontalHeaderLabels(['Host', 'Status', 'Queue', 'Njobs', 'Ncpus', 'Ut (%)', 'Mem (G)', 'Maxmem (G)', 'swp (G)', 'maxswp (G)'])
 
-        bhostsDic  = common.getBhostsInfo()
-        lshostsDic = common.getLshostsInfo()
-        lsloadDic  = common.getLsloadInfo()
-        hostQueueDic = common.getHostQueueInfo()
+        bhostsDic  = openlava_common.getBhostsInfo()
+        lshostsDic = openlava_common.getLshostsInfo()
+        lsloadDic  = openlava_common.getLsloadInfo()
+        hostQueueDic = openlava_common.getHostQueueInfo()
 
         for i in range(len(self.hostList)):
             host = self.hostList[i]
@@ -795,7 +796,7 @@ class mainWindow(QMainWindow):
         # Hide the vertical header.
         self.queuesTabTable.verticalHeader().setVisible(False)
 
-        queuesDic = common.getBqueuesInfo()
+        queuesDic = openlava_common.getBqueuesInfo()
         self.queuesTabTable.setRowCount(len(self.queueList))
 
         for i in range(len(self.queueList)):

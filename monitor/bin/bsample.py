@@ -16,6 +16,8 @@ if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.envi
 
 from monitor.conf import config
 from monitor.common import common
+from monitor.common import openlava_common
+from monitor.common import sqlite3_common
 
 os.environ["PYTHONUNBUFFERED"]="1"
 
@@ -106,8 +108,8 @@ class sampling:
 
         print('>>> Sampling job info into ' + str(self.jobDbFile) + ' ...')
 
-        jobTableList = common.getSqlTableList(self.jobDbFile, self.jobDbCurs)
-        bjobsDic = common.getBjobsUfInfo()
+        jobTableList = sqlite3_common.getSqlTableList(self.jobDbFile, self.jobDbCurs)
+        bjobsDic = openlava_common.getBjobsUfInfo()
         jobList = list(bjobsDic.keys())
 
         for job in jobList:
@@ -122,23 +124,23 @@ class sampling:
 
             # If job table (with old data) has been on the self.jobDbFile, drop it.
             if jobTableName in jobTableList:
-                dataDic = common.getSqlTableData(self.jobDbFile, self.jobDbCurs, jobTableName, ['SECONDS'])
+                dataDic = sqlite3_common.getSqlTableData(self.jobDbFile, self.jobDbCurs, jobTableName, ['SECONDS'])
                 if dataDic:
                     if len(dataDic['SECONDS']) > 0:
                         lastSeconds = int(dataDic['SECONDS'][-1])
                         if self.currentSeconds-lastSeconds > 864000:
                             common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even ten day ago, will drop it.')
-                            common.dropSqlTable(self.jobDbFile, self.jobDbCurs, jobTableName)
+                            sqlite3_common.dropSqlTable(self.jobDbFile, self.jobDbCurs, jobTableName)
 
             # If job table is not on the self.jobDbFile, create it.
             if jobTableName not in jobTableList:
                 keyList = self.addKeyDateInfo(keyList)
-                keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, keyString)
+                keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                sqlite3_common.createSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, keyString)
 
             # Insert sql table value.
-            valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, valueString)
+            valueString = sqlite3_common.genSqlTableValueString(valueList)
+            sqlite3_common.insertIntoSqlTable(self.jobDbFile, self.jobDbConn, jobTableName, valueString)
 
         self.jobDbCurs.close()
         self.jobDbConn.close()
@@ -154,10 +156,10 @@ class sampling:
 
         print('>>> Sampling queue info into ' + str(self.queueDbFile) + ' ...')
 
-        queueTableList = common.getSqlTableList(self.queueDbFile, self.queueDbCurs)
-        bqueuesDic = common.getBqueuesInfo()
+        queueTableList = sqlite3_common.getSqlTableList(self.queueDbFile, self.queueDbCurs)
+        bqueuesDic = openlava_common.getBqueuesInfo()
         queueList = bqueuesDic['QUEUE_NAME']
-        queueHostDic = common.getQueueHostInfo()
+        queueHostDic = openlava_common.getQueueHostInfo()
 
         # Insert 'sampleTime', 'DATE', 'TIME' and 'SECONDS' into key list.
         origKeyList = list(bqueuesDic.keys())
@@ -183,12 +185,12 @@ class sampling:
 
             # Generate sql table.
             if queueTableName not in queueTableList:
-                keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, keyString)
+                keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                sqlite3_common.createSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, keyString)
 
             # Insert sql table value.
-            valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, valueString)
+            valueString = sqlite3_common.genSqlTableValueString(valueList)
+            sqlite3_common.insertIntoSqlTable(self.queueDbFile, self.queueDbConn, queueTableName, valueString)
 
         self.queueDbCurs.close()
         self.queueDbConn.close()
@@ -204,8 +206,8 @@ class sampling:
 
         print('>>> Sampling host info into ' + str(self.hostDbFile) + ' ...')
 
-        hostTableList = common.getSqlTableList(self.hostDbFile, self.hostDbCurs)
-        bhostsDic = common.getBhostsInfo()
+        hostTableList = sqlite3_common.getSqlTableList(self.hostDbFile, self.hostDbCurs)
+        bhostsDic = openlava_common.getBhostsInfo()
         hostList = bhostsDic['HOST_NAME']
 
         # Insert 'sampleTime', 'DATE', 'TIME' and 'SECONDS' into key list.
@@ -226,12 +228,12 @@ class sampling:
 
             # Generate sql table.
             if hostTableName not in hostTableList:
-                keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, keyString)
+                keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                sqlite3_common.createSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, keyString)
 
             # Insert sql table value.
-            valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, valueString)
+            valueString = sqlite3_common.genSqlTableValueString(valueList)
+            sqlite3_common.insertIntoSqlTable(self.hostDbFile, self.hostDbConn, hostTableName, valueString)
 
         self.hostDbCurs.close()
         self.hostDbConn.close()
@@ -247,8 +249,8 @@ class sampling:
 
         print('>>> Sampling host load info into ' + str(self.loadDbFile) + ' ...')
 
-        loadTableList = common.getSqlTableList(self.loadDbFile, self.loadDbCurs)
-        lsloadDic = common.getLsloadInfo()
+        loadTableList = sqlite3_common.getSqlTableList(self.loadDbFile, self.loadDbCurs)
+        lsloadDic = openlava_common.getLsloadInfo()
         hostList = lsloadDic['HOST_NAME']
 
         # Insert 'sampleTime', 'DATE', 'TIME' and 'SECONDS' into key list.
@@ -269,12 +271,12 @@ class sampling:
 
             # Generate sql table.
             if loadTableName not in loadTableList:
-                keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, keyString)
+                keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                sqlite3_common.createSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, keyString)
 
             # Insert sql table value.
-            valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, valueString)
+            valueString = sqlite3_common.genSqlTableValueString(valueList)
+            sqlite3_common.insertIntoSqlTable(self.loadDbFile, self.loadDbConn, loadTableName, valueString)
 
         self.loadDbCurs.close()
         self.loadDbConn.close()
@@ -290,8 +292,8 @@ class sampling:
 
         print('>>> Sampling user info into ' + str(self.userDbFile) + ' ...')
 
-        userTableList = common.getSqlTableList(self.userDbFile, self.userDbCurs)
-        busersDic = common.getBusersInfo()
+        userTableList = sqlite3_common.getSqlTableList(self.userDbFile, self.userDbCurs)
+        busersDic = openlava_common.getBusersInfo()
         userList = busersDic['USER/GROUP']
 
         # Insert 'sampleTime', 'DATE', 'TIME' and 'SECONDS' into key list.
@@ -312,12 +314,12 @@ class sampling:
 
             # Generate sql table.
             if userTableName not in userTableList:
-                keyString = common.genSqlTableKeyString(keyList)
-                common.createSqlTable(self.userDbFile, self.userDbConn, userTableName, keyString)
+                keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                sqlite3_common.createSqlTable(self.userDbFile, self.userDbConn, userTableName, keyString)
 
             # Insert sql table value.
-            valueString = common.genSqlTableValueString(valueList)
-            common.insertIntoSqlTable(self.userDbFile, self.userDbConn, userTableName, valueString)
+            valueString = sqlite3_common.genSqlTableValueString(valueList)
+            sqlite3_common.insertIntoSqlTable(self.userDbFile, self.userDbConn, userTableName, valueString)
 
         self.userDbCurs.close()
         self.userDbConn.close()

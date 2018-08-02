@@ -14,6 +14,7 @@ if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.envi
 from monitor.bin import bmonitorGUI
 from monitor.conf import config
 from monitor.common import common
+from monitor.common import sqlite3_common
 
 os.environ["PYTHONUNBUFFERED"]="1"
 
@@ -37,7 +38,7 @@ def drawJobMemCurve(jobDbFile, jobDbCurs, job):
             return
 
     tableName = 'job_' + str(job)
-    dataDic = common.getSqlTableData(jobDbFile, jobDbCurs, tableName, ['sampleTime', 'mem'])
+    dataDic = sqlite3_common.getSqlTableData(jobDbFile, jobDbCurs, tableName, ['sampleTime', 'mem'])
 
     if not dataDic:
         common.printWarning('*Warning*: job information is missing for "' + str(job) + '".')
@@ -87,7 +88,7 @@ def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
             return
 
     tableName = 'queue_' + str(queue)
-    dataDic = common.getSqlTableData(queueDbFile, queueDbCurs, tableName, ['DATE', 'PEND', 'RUN'])
+    dataDic = sqlite3_common.getSqlTableData(queueDbFile, queueDbCurs, tableName, ['DATE', 'PEND', 'RUN'])
 
     if not dataDic:
         common.printWarning('*Warning*: queue information is missing for "' + str(queue) + '".')
