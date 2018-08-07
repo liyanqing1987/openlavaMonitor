@@ -31,7 +31,7 @@ you can re-point it into your own path.
 
 SAMPLING:
 Use monitor/bin/bsample.py sample job/queue data first, then bmonitor
-can show the job/queue info with saved data base.
+can show the job/queue info with saved database.
 Below is the suggested crontab setting on sampling data.
 
 SHELL=/bin/csh

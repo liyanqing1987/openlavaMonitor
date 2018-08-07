@@ -9,19 +9,51 @@ if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.envi
 
 from monitor.common import common
 
-def getSqlTableList(dbFile, curs):
+def connectDbFile(dbFile, mode='read'):
+    result = 'passed'
+    conn = ''
+    curs = ''
+
+    if mode == 'write':
+        journalDbFile = str(dbFile) + '-journal'
+        if os.path.exists(journalDbFile) and (mode == 'write'):
+            common.printWarning('*Warning*: database file "' + str(dbFile) + '" is on another connection, will not connect it.')
+            result = 'locked'
+            return(result, conn, curs)
+    elif mode == 'read':
+        if not os.path.exists(dbFile):
+            common.printError('*Error*: "' + str(dbFile) + '" No such database file.')
+            result = 'failed'
+            return(result, conn, curs)
+
+    try:
+        conn = sqlite3.connect(dbFile)
+        curs = conn.cursor()
+    except Exception as error:
+        common.printError('*Error*: Failed on connecting database file "' + str(dbFile) + '": ' + str(error))
+        result = 'failed'
+
+    return(result, conn, curs)
+
+def connectPreprocess(dbFile, orig_conn, mode='read'):
+    if orig_conn == '':
+        (result, conn, curs) = connectDbFile(dbFile, mode)
+    else:
+        result = 'passed'
+        conn = orig_conn
+        curs = conn.cursor()
+
+    return(result, conn, curs)
+
+def getSqlTableList(dbFile, orig_conn):
     """
     Get all of the tables from the specified db file.
     """
     tableList = []
 
-    if curs == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-            curs = conn.cursor()
-        else:
-            common.printError('*Error* (getSqlTableList) : "' + str(dbFile) + '" No such database file.')
-            return(tableList)
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn)
+    if result == 'failed':
+        return(tableList)
 
     try:
         command = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
@@ -30,61 +62,53 @@ def getSqlTableList(dbFile, curs):
         for item in allItems:
             (key,) = item
             tableList.append(key)
-        if curs == '':
-            curs.close()
+        curs.close()
+        if orig_conn == '':
             conn.close()
     except Exception as error:
         common.printError('*Error* (getSqlTableList) : Failed on getting table list on dbFile "' + str(dbFile) + '": ' + str(error))
 
     return(tableList)
 
-def getSqlTableKeyList(dbFile, curs, tableName):
+def getSqlTableKeyList(dbFile, orig_conn, tableName):
     """
     Get all of the tables from the specified db file.
     """
     keyList = []
 
-    if curs == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-            curs = conn.cursor()
-        else:
-            common.printError('*Error* (getSqlTableKeyList) : "' + str(dbFile) + '" No such database file.')
-            return(keyList)
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn)
+    if result == 'failed':
+        return(keyList)
 
     try:
         command = "SELECT * FROM '" + str(tableName) + "'"
         curs.execute(command)
         keyList = [tuple[0] for tuple in curs.description]
-        if curs == '':
-            curs.close()
+        curs.close()
+        if orig_conn == '':
             conn.close()
     except Exception as error:
         common.printError('*Error* (getSqlTableKeyList) : Failed on getting table key list on dbFile "' + str(dbFile) + '": ' + str(error))
 
     return(keyList)
 
-def getSqlTableData(dbFile, curs, tableName, keyList=[]):
+def getSqlTableData(dbFile, orig_conn, tableName, keyList=[]):
     """
     With specified dbFile-tableName, get all data from specified keyList.
     """
     dataDic = {}
 
-    if curs == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-            curs = conn.cursor()
-        else:
-            common.printError('*Error* (getSqlTableData) : "' + str(dbFile) + '" No such database file.')
-            return(dataDic)
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn)
+    if result == 'failed':
+        return(dataDic)
 
     try:
         command = "SELECT * FROM '" + str(tableName) + "'"
         results = curs.execute(command)
         allItems = results.fetchall()
         tableKeyList = [tuple[0] for tuple in curs.description]
-        if curs == '':
-            curs.close()
+        curs.close()
+        if orig_conn == '':
             conn.close()
 
         if len(keyList) == 0:
@@ -110,68 +134,56 @@ def getSqlTableData(dbFile, curs, tableName, keyList=[]):
 
     return(dataDic)
 
-def dropSqlTable(dbFile, conn, tableName):
+def dropSqlTable(dbFile, orig_conn, tableName):
     """
-    Drop table it it exists.
+    Drop table if it exists.
     """
-    if conn == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-        else:
-            common.printError('*Error* (dropSqlTable) : "' + str(dbFile) + '" No such database file.')
-            return
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn, mode='write')
+    if (result == 'failed') or (result == 'locked'):
+        return
 
     try:
-        curs = conn.cursor()
         command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
         curs.execute(command)
         curs.close()
         conn.commit()
-        if conn == '':
+        if orig_conn == '':
             conn.close()
     except Exception as error:
         common.printError('*Error* (dropSqlTable) : Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '": ' + str(error))
 
-def createSqlTable(dbFile, conn, tableName, initString):
+def createSqlTable(dbFile, orig_conn, tableName, initString):
     """
     Create a table if it not exists, initialization the setting.
     """
-    if conn == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-        else:
-            common.printError('*Error* (createSqlTable) : "' + str(dbFile) + '" No such database file.')
-            return
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn, mode='write')
+    if (result == 'failed') or (result == 'locked'):
+        return
 
     try:
-        curs = conn.cursor()
         command = "CREATE TABLE IF NOT EXISTS '" + str(tableName) + "' " + str(initString)
         curs.execute(command)
         curs.close()
         conn.commit()
-        if conn == '':
+        if orig_conn == '':
             conn.close()
     except Exception as error:
         common.printError('*Error* (createSqlTable) : Failed on creating table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
-def insertIntoSqlTable(dbFile, conn, tableName, valueString):
+def insertIntoSqlTable(dbFile, orig_conn, tableName, valueString):
     """
     Insert new value into sql table.
     """
-    if conn == '':
-        if os.path.exists(dbFile):
-            conn = sqlite3.connect(dbFile)
-        else:
-            common.printError('*Error* (insertIntoSqlTable) : "' + str(dbFile) + '" No such database file.')
-            return
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn, mode='write')
+    if (result == 'failed') or (result == 'locked'):
+        return
 
     try:
-        curs = conn.cursor()
         command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
         curs.execute(command)
         curs.close()
         conn.commit()
-        if conn == '':
+        if orig_conn == '':
             conn.close()
     except Exception as error:
         common.printError('*Error* (insertIntoSqlTable) : Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))

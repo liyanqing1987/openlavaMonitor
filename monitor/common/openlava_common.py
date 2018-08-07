@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import collections
-import pexpect
 import subprocess
 
 # Import openlavaMonitor packages.
@@ -46,6 +45,17 @@ def getCommandDict(command):
                 myDic[key].append(value)
 
     return(myDic)
+
+def getBjobsInfo(command='bjobs -u all -r -w'):
+    """
+    Get bjobs info with command 'bjobs'.
+    ====
+    JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
+    146940  tao.che RUN   short      etxnode02   cm067       abstract   Aug  2 21:00  
+    ====
+    """
+    bjobsDic = getCommandDict(command)
+    return(bjobsDic)
 
 def getBqueuesInfo(command='bqueues -w'):
     """
@@ -346,42 +356,3 @@ def getHostQueueInfo():
                 hostQueueDic[host] = [queue, ]
 
     return(hostQueueDic)
-
-def getRemoteProcessInfo(hostName, userName, password):
-    """
-    Get process info on the specified host.
-    The userName must be a Privileged account, so it can ssh all of the openlava hosts.
-    """
-    processDic = collections.OrderedDict()
-
-    # Login specified host with specified userName and password, all process info.
-    command = 'ssh -tt ' + str(hostName) + ' -l ' + str(userName) + " 'ps aux'"
-    try:
-        child = pexpect.spawn(command, timeout=20)
-        returnCode = child.expect("Are you sure you want to continue connecting (yes/no)?", timeout=5)
-        if returnCode == 0:
-            child.sendline('yes')
-    except:
-        pass
-
-    child.expect(str(userName) + '@' + str(hostName) + "'s password:")
-    child.sendline(password)
-    child.expect(pexpect.EOF)
-
-    output = str(child.before, encoding='utf-8')
-    lines = output.split('\n')
-
-    for i in range(len(lines)):
-        line = lines[i]
-        if i == 0:
-            keyList = line.split()
-            for key in keyList:
-                processDic[key] = []
-        else:
-            processInfo = line.split()
-            for j in range(len(processInfo)):
-                key = keyList[j]
-                value = processInfo[j]
-                processDic[key].append(value)
-
-    return(processDic)

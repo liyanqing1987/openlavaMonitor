@@ -1,11 +1,11 @@
-#!/usr/local/bin/python3
+#!PYTHONPATH
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import sys
 import getpass
 import datetime
-import sqlite3
 
 # Import openlavaMonitor packages.
 if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
@@ -19,26 +19,30 @@ from monitor.common import sqlite3_common
 os.environ["PYTHONUNBUFFERED"]="1"
 
 user = getpass.getuser()
+jobDbFile= str(config.dbPath) + '/job.db'
+(jobDbFileConnectResult, jobDbConn, jobDbCurs) = sqlite3_common.connectDbFile(jobDbFile)
+queueDbFile= str(config.dbPath) + '/queue.db'
+(queueDbFileConnectResult, queueDbConn, queueDbCurs) = sqlite3_common.connectDbFile(queueDbFile)
 
-def drawJobMemCurve(jobDbFile, jobDbCurs, job):
+def drawJobMemCurve(job):
     """
     Draw memory usage curve for specified job.
     """
     print('Drawing memory curve for job "' + str(job) + '".')
 
+    global jobDbFile
+    global jobDbFileConnectResult
+    global jobDbConn
+
+    if jobDbFileConnectResult == 'failed':
+        common.printWarning('*Warning*: Failed on connectiong job database file "' + str(jobDbFile) + '".')
+        return
+
     runTimeList = []
     memList  = []
 
-    if jobDbCurs == '':
-        if os.path.exists(jobDbFile):
-            jobDbConn = sqlite3.connect(jobDbFile)
-            jobDbCurs = jobDbConn.cursor()
-        else:
-            common.printWarning('*Warning*: job database file "' + str(jobDbFile) + '" is missing, cannot find job related infomation.')
-            return
-
     tableName = 'job_' + str(job)
-    dataDic = sqlite3_common.getSqlTableData(jobDbFile, jobDbCurs, tableName, ['sampleTime', 'mem'])
+    dataDic = sqlite3_common.getSqlTableData(jobDbFile, jobDbConn, tableName, ['sampleTime', 'mem'])
 
     if not dataDic:
         common.printWarning('*Warning*: job information is missing for "' + str(job) + '".')
@@ -67,11 +71,19 @@ def drawJobMemCurve(jobDbFile, jobDbCurs, job):
         print('Save memory curve as "' + str(memCurveFig) + '".')
         common.drawPlot(realRunTimeList, realMemList, 'runTime (Minitu)', 'memory (G)', yUnit='G', title='job : ' + str(job), saveName=memCurveFig, figureNum=jobNum)
 
-def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
+def drawQueueJobNumCurve(queue):
     """
     Draw (PEND/RUN) job number curve for specified queue.
     """
     print('Drawing queue (PEND/RUN) job num curve for queue "' + str(queue) + '".')
+
+    global queueDbFile
+    global queueDbFileConnectResult
+    global queueDbConn
+
+    if queueDbFileConnectResult == 'failed':
+        common.printWarning('*Warning*: Failed on connectiong queue database file "' + str(queueDbFile) + '".')
+        return
 
     dateList = []
     pendList = []
@@ -79,31 +91,24 @@ def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
     tempPendList = []
     tempRunList = []
 
-    if queueDbCurs == '':
-        if os.path.exists(queueDbFile):
-            queueDbConn = sqlite3.connect(queueDbFile)
-            queueDbCurs = queueDbConn.cursor()
-        else:
-            common.printWarning('*Warning*: queue database file "' + str(queueDbFile) + '" is missing, cannot find queue related information.')
-            return
-
     tableName = 'queue_' + str(queue)
-    dataDic = sqlite3_common.getSqlTableData(queueDbFile, queueDbCurs, tableName, ['DATE', 'PEND', 'RUN'])
+    dataDic = sqlite3_common.getSqlTableData(queueDbFile, queueDbConn, tableName, ['sampleTime', 'PEND', 'RUN'])
 
     if not dataDic:
         common.printWarning('*Warning*: queue information is missing for "' + str(queue) + '".')
         return
     else:
-        origDateList = dataDic['DATE']
+        origSampleTimeList = dataDic['sampleTime']
         origPendList = dataDic['PEND']
         origRunList = dataDic['RUN']
 
-        for i in range(len(origDateList)):
-            date = origDateList[i]
+        for i in range(len(origSampleTimeList)):
+            sampleTime = origSampleTimeList[i]
+            date = re.sub('_.*', '', sampleTime)
             pendNum = origPendList[i]
             runNum = origRunList[i]
 
-            if (i != 0) and ((i == len(origDateList)-1) or (date not in dateList)):
+            if (i != 0) and ((i == len(origSampleTimeList)-1) or (date not in dateList)):
                 pendAvg = int(sum(tempPendList)/len(tempPendList))
                 pendList.append(pendAvg)
                 runAvg = int(sum(tempRunList)/len(tempRunList))
@@ -138,6 +143,20 @@ def drawQueueJobNumCurve(queueDbFile, queueDbCurs, queue):
 #################
 def main():
     bmonitorGUI.main()
+
+    global jobDbFile
+    global jobDbFileConnectResult
+    global jobDbConn
+    if jobDbFileConnectResult != 'failed':
+        jobDbCurs.close()
+        jobDbConn.close()
+
+    global queueDbFile
+    global queueDbFileConnectResult
+    global queueDbConn
+    if queueDbFileConnectResult != 'failed':
+        queueDbCurs.close()
+        queueDbConn.close()
 
 if __name__ == '__main__':
     main()
