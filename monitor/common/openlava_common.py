@@ -149,6 +149,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                      'rusageMemCompile'           : re.compile('.*Requested Resources <.*rusage\[mem=([1-9][0-9]*).*>.*'),
                      'startedOnCompile'           : re.compile('.*[sS]tarted on ([0-9]+ Hosts/Processors )?([^;,]+).*'),
                      'startedTimeCompile'         : re.compile('(.*): [sS]tarted on.*'),
+                     'finishedTimeCompile'        : re.compile('(.*): (Done successfully|Exited with).*'),
                      'cpuTimeCompile'             : re.compile('.*The CPU time used is ([1-9][0-9]*) seconds.*'),
                      'memCompile'                 : re.compile('.*MEM: ([1-9][0-9]*) Mbytes.*'),
                     }
@@ -188,6 +189,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                 myDic[job]['rusageMem'] = ''
                 myDic[job]['startedOn'] = ''
                 myDic[job]['startedTime'] = ''
+                myDic[job]['finishedTime'] = ''
                 myDic[job]['cpuTime'] = ''
                 myDic[job]['mem'] = ''
 
@@ -245,6 +247,9 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                 if jobCompileDic['startedTimeCompile'].match(line):
                     myMatch = jobCompileDic['startedTimeCompile'].match(line)
                     myDic[job]['startedTime'] = myMatch.group(1)
+                if jobCompileDic['finishedTimeCompile'].match(line):
+                    myMatch = jobCompileDic['finishedTimeCompile'].match(line)
+                    myDic[job]['finishedTime'] = myMatch.group(1)
                 if jobCompileDic['cpuTimeCompile'].match(line):
                     myMatch = jobCompileDic['cpuTimeCompile'].match(line)
                     myDic[job]['cpuTime'] = myMatch.group(1)

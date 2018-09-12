@@ -95,7 +95,7 @@ class sampling:
         """
         self.getDateInfo()
         jobDbFile = str(self.dbPath) + '/job.db'
-        (result, jobDbConn, jobDbCurs) = sqlite3_common.connectDbFile(jobDbFile, mode='write')
+        (result, jobDbConn) = sqlite3_common.connectDbFile(jobDbFile, mode='write')
         if result != 'passed':
             return
 
@@ -104,8 +104,14 @@ class sampling:
         jobTableList = sqlite3_common.getSqlTableList(jobDbFile, jobDbConn)
         bjobsDic = openlava_common.getBjobsUfInfo()
         jobList = list(bjobsDic.keys())
+        jobSqlDic = {}
 
         for job in jobList:
+            jobSqlDic[job] = {
+                              'drop': False,
+                              'keyString': '',
+                              'valueString': '',
+                             }
             jobTableName='job_' + str(job)
             print('    Sampling for job "' + str(job) + '" ...')
 
@@ -124,24 +130,34 @@ class sampling:
                     if len(dataDic['sampleTime']) > 0:
                         lastSampleTime = dataDic['sampleTime'][-1]
                         lastSeconds = int(time.mktime(datetime.datetime.strptime(str(lastSampleTime), "%Y%m%d_%H%M%S").timetuple()))
-                        if self.currentSeconds-lastSeconds > 864000:
-                            common.printWarning('*Warning*: table "' + str(jobTableName) + '" already existed even ten day ago, will drop it.')
-                            sqlite3_common.dropSqlTable(jobDbFile, jobDbConn, jobTableName)
+                        if self.currentSeconds-lastSeconds > 3600:
+                            common.printWarning('    *Warning*: table "' + str(jobTableName) + '" already existed even one hour ago, will drop it.')
+                            jobSqlDic[job]['drop'] = True
+                            jobTableList.remove(jobTableName)
 
             # If job table is not on the jobDbFile, create it.
             if jobTableName not in jobTableList:
                 keyList = self.addKeyDateInfo(keyList)
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                sqlite3_common.createSqlTable(jobDbFile, jobDbConn, jobTableName, keyString)
+                jobSqlDic[job]['keyString'] = keyString
 
             # Insert sql table value.
             valueString = sqlite3_common.genSqlTableValueString(valueList)
-            sqlite3_common.insertIntoSqlTable(jobDbFile, jobDbConn, jobTableName, valueString)
+            jobSqlDic[job]['valueString'] = valueString
 
-        print('    Done')
+        for job in jobSqlDic.keys():
+            jobTableName='job_' + str(job)
+            if jobSqlDic[job]['drop']:
+                sqlite3_common.dropSqlTable(jobDbFile, jobDbConn, jobTableName, commit=False)
+            if jobSqlDic[job]['keyString'] != '':
+                sqlite3_common.createSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['keyString'], commit=False)
+            if jobSqlDic[job]['valueString'] != '':
+                sqlite3_common.insertIntoSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['valueString'], commit=False)
 
-        jobDbCurs.close()
+        print('    Committing the update to sqlite3 ...')
+        jobDbConn.commit()
         jobDbConn.close()
+        print('    Done (' + str(len(jobList)) + ' jobs).')
 
     def sampleQueueInfo(self):
         """
@@ -149,7 +165,7 @@ class sampling:
         """
         self.getDateInfo()
         queueDbFile = str(self.dbPath) + '/queue.db'
-        (result, queueDbConn, queueDbCurs) = sqlite3_common.connectDbFile(queueDbFile, mode='write')
+        (result, queueDbConn) = sqlite3_common.connectDbFile(queueDbFile, mode='write')
         if result != 'passed':
             return
 
@@ -164,9 +180,14 @@ class sampling:
         origKeyList = list(bqueuesDic.keys())
         keyList = self.addKeyDateInfo(origKeyList)
         keyList.append('HOST')
+        queueSqlDic = {}
 
         for i in range(len(queueList)):
             queue = queueList[i]
+            queueSqlDic[queue] = {
+                                  'keyString': '',
+                                  'valueString': '',
+                                 }
             queueTableName = 'queue_' + str(queue)
             print('    Sampling for queue "' + str(queue) + '" ...')
 
@@ -185,13 +206,21 @@ class sampling:
             # Generate sql table.
             if queueTableName not in queueTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                sqlite3_common.createSqlTable(queueDbFile, queueDbConn, queueTableName, keyString)
+                queueSqlDic[queue]['keyString'] = keyString
 
             # Insert sql table value.
             valueString = sqlite3_common.genSqlTableValueString(valueList)
-            sqlite3_common.insertIntoSqlTable(queueDbFile, queueDbConn, queueTableName, valueString)
+            queueSqlDic[queue]['valueString'] = valueString
 
-        queueDbCurs.close()
+        for queue in queueList:
+            queueTableName = 'queue_' + str(queue)
+            if queueSqlDic[queue]['keyString'] != '':
+                sqlite3_common.createSqlTable(queueDbFile, queueDbConn, queueTableName, queueSqlDic[queue]['keyString'], commit=False)
+            if queueSqlDic[queue]['valueString'] != '':
+                sqlite3_common.insertIntoSqlTable(queueDbFile, queueDbConn, queueTableName, queueSqlDic[queue]['valueString'], commit=False)
+
+        print('    Committing the update to sqlite3 ...')
+        queueDbConn.commit()
         queueDbConn.close()
 
     def sampleHostInfo(self):
@@ -200,7 +229,7 @@ class sampling:
         """
         self.getDateInfo()
         hostDbFile = str(self.dbPath) + '/host.db'
-        (result, hostDbConn, hostDbCurs) = sqlite3_common.connectDbFile(hostDbFile, mode='write')
+        (result, hostDbConn) = sqlite3_common.connectDbFile(hostDbFile, mode='write')
         if result != 'passed':
             return
 
@@ -213,9 +242,14 @@ class sampling:
         # Insert 'sampleTime' into key list.
         origKeyList = list(bhostsDic.keys())
         keyList = self.addKeyDateInfo(origKeyList)
+        hostSqlDic = {}
 
         for i in range(len(hostList)):
             host = hostList[i]
+            hostSqlDic[host] = {
+                                'keyString': '',
+                                'valueString': '',
+                               }
             hostTableName = 'host_' + str(host)
             print('    Sampling for host "' + str(host) + '" ...')
 
@@ -229,13 +263,21 @@ class sampling:
             # Generate sql table.
             if hostTableName not in hostTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                sqlite3_common.createSqlTable(hostDbFile, hostDbConn, hostTableName, keyString)
+                hostSqlDic[host]['keyString'] = keyString
 
             # Insert sql table value.
             valueString = sqlite3_common.genSqlTableValueString(valueList)
-            sqlite3_common.insertIntoSqlTable(hostDbFile, hostDbConn, hostTableName, valueString)
+            hostSqlDic[host]['valueString'] = valueString
 
-        hostDbCurs.close()
+        for host in hostList:
+            hostTableName = 'host_' + str(host)
+            if hostSqlDic[host]['keyString'] != '':
+                sqlite3_common.createSqlTable(hostDbFile, hostDbConn, hostTableName, hostSqlDic[host]['keyString'], commit=False)
+            if hostSqlDic[host]['valueString'] != '':
+                sqlite3_common.insertIntoSqlTable(hostDbFile, hostDbConn, hostTableName, hostSqlDic[host]['valueString'], commit=False)
+
+        print('    Committing the update to sqlite3 ...')
+        hostDbConn.commit()
         hostDbConn.close()
 
     def sampleLoadInfo(self):
@@ -244,7 +286,7 @@ class sampling:
         """
         self.getDateInfo()
         loadDbFile = str(self.dbPath) + '/load.db'
-        (result, loadDbConn, loadDbCurs) = sqlite3_common.connectDbFile(loadDbFile, mode='write')
+        (result, loadDbConn) = sqlite3_common.connectDbFile(loadDbFile, mode='write')
         if result != 'passed':
             return
 
@@ -257,9 +299,14 @@ class sampling:
         # Insert 'sampleTime' into key list.
         origKeyList = list(lsloadDic.keys())
         keyList = self.addKeyDateInfo(origKeyList)
+        loadSqlDic = {}
 
         for i in range(len(hostList)):
             host = hostList[i]
+            loadSqlDic[host] = {
+                                'keyString': '',
+                                'valueString': '',
+                               }
             loadTableName = 'load_' + str(host)
             print('    Sampling for host "' + str(host) + '" ...')
 
@@ -273,13 +320,21 @@ class sampling:
             # Generate sql table.
             if loadTableName not in loadTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                sqlite3_common.createSqlTable(loadDbFile, loadDbConn, loadTableName, keyString)
+                loadSqlDic[host]['keyString'] = keyString
 
             # Insert sql table value.
             valueString = sqlite3_common.genSqlTableValueString(valueList)
-            sqlite3_common.insertIntoSqlTable(loadDbFile, loadDbConn, loadTableName, valueString)
+            loadSqlDic[host]['valueString'] = valueString
 
-        loadDbCurs.close()
+        for host in hostList:
+            loadTableName = 'load_' + str(host)
+            if loadSqlDic[host]['keyString'] != '':
+                sqlite3_common.createSqlTable(loadDbFile, loadDbConn, loadTableName, loadSqlDic[host]['keyString'], commit=False)
+            if loadSqlDic[host]['valueString'] != '':
+                sqlite3_common.insertIntoSqlTable(loadDbFile, loadDbConn, loadTableName, loadSqlDic[host]['valueString'], commit=False)
+
+        print('    Committing the update to sqlite3 ...')
+        loadDbConn.commit()
         loadDbConn.close()
 
     def sampleUserInfo(self):
@@ -288,7 +343,7 @@ class sampling:
         """
         self.getDateInfo()
         userDbFile = str(self.dbPath) + '/user.db'
-        (result, userDbConn, userDbCurs) = sqlite3_common.connectDbFile(userDbFile, mode='write')
+        (result, userDbConn) = sqlite3_common.connectDbFile(userDbFile, mode='write')
         if result != 'passed':
             return
 
@@ -301,9 +356,14 @@ class sampling:
         # Insert 'sampleTime' into key list.
         origKeyList = list(busersDic.keys())
         keyList = self.addKeyDateInfo(origKeyList)
+        userSqlDic = {}
 
         for i in range(len(userList)):
             user = userList[i]
+            userSqlDic[user] = {
+                                'keyString': '',
+                                'valueString': '',
+                               }
             userTableName = 'user_' + str(user)
             print('    Sampling for user "' + str(user) + '" ...')
 
@@ -317,13 +377,21 @@ class sampling:
             # Generate sql table.
             if userTableName not in userTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                sqlite3_common.createSqlTable(userDbFile, userDbConn, userTableName, keyString)
+                userSqlDic[user]['keyString'] = keyString
 
             # Insert sql table value.
             valueString = sqlite3_common.genSqlTableValueString(valueList)
-            sqlite3_common.insertIntoSqlTable(userDbFile, userDbConn, userTableName, valueString)
+            userSqlDic[user]['valueString'] = valueString
 
-        userDbCurs.close()
+        for user in userList:
+            userTableName = 'user_' + str(user)
+            if userSqlDic[user]['keyString'] != '':
+                sqlite3_common.createSqlTable(userDbFile, userDbConn, userTableName, userSqlDic[user]['keyString'], commit=False)
+            if userSqlDic[user]['valueString'] != '':
+                sqlite3_common.insertIntoSqlTable(userDbFile, userDbConn, userTableName, userSqlDic[user]['valueString'], commit=False)
+
+        print('    Committing the update to sqlite3 ...')
+        userDbConn.commit()
         userDbConn.close()
 
     def sampling(self):
@@ -343,6 +411,8 @@ class sampling:
             if self.userSampling:
                 p = Process(target=self.sampleUserInfo)
                 p.start()
+
+            p.join()
 
             if self.interval == 0:
                  break

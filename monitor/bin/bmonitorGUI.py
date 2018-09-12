@@ -7,7 +7,7 @@ import sys
 import stat
 import copy
 import getpass
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QTextEdit, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QAction, qApp, QTextEdit, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox
 from PyQt5.QtGui import QPixmap, QBrush, QFont
 from PyQt5.QtCore import Qt
 
@@ -38,14 +38,23 @@ class mainWindow(QMainWindow):
     """
     def __init__(self):
         super().__init__()
-        self.queueList = openlava_common.getQueueList()
-        self.hostList = openlava_common.getHostList()
+
+        self.myDrawCurve = bmonitor.drawCurve()
+        self.freshMark = False
+
         self.initUI()
 
     def initUI(self):
         """
         Main process, draw the main graphic frame.
         """
+        self.queueList = openlava_common.getQueueList()
+        self.hostList = openlava_common.getHostList()
+
+        # Add menubar.
+        if not self.freshMark:
+            self.genMenubar()
+
         # Define main Tab widget
         self.mainTab = QTabWidget(self)
         self.setCentralWidget(self.mainTab)
@@ -73,6 +82,31 @@ class mainWindow(QMainWindow):
         pyqt5_common.centerWindow(self)
         self.setWindowTitle('openlavaMonitor')
         self.show()
+
+    def genMenubar(self):
+        """
+        Generate menubar.
+        """
+        self.menubar = self.menuBar()
+
+        # File
+        exitAction = QAction('Quit', self)
+        exitAction.triggered.connect(qApp.quit)
+
+        fileMenu = self.menubar.addMenu('File')
+        fileMenu.addAction(exitAction)
+
+        # Setup
+        freshAction = QAction('Fresh', self)
+        freshAction.triggered.connect(self.fresh)
+
+        setupMenu = self.menubar.addMenu('Setup')
+        setupMenu.addAction(freshAction)
+
+    def fresh(self):
+        print('* Re-Loading openlava status, please wait a moment ...')
+        self.freshMark = True
+        self.initUI()
 
 
 ## Common sub-functions (begin) ##
@@ -167,14 +201,14 @@ class mainWindow(QMainWindow):
         jobTabStartedOnLabel = QLabel('Host', self.jobTabFrame1)
         self.jobTabStartedOnLine = QLineEdit()
 
+        jobTabProjectLabel = QLabel('Project', self.jobTabFrame1)
+        self.jobTabProjectLine = QLineEdit()
+
         jobTabProcessorsRequestedLabel = QLabel('Processors', self.jobTabFrame1)
         self.jobTabProcessorsRequestedLine = QLineEdit()
 
         jobTabCpuTimeLabel = QLabel('Cpu Time', self.jobTabFrame1)
         self.jobTabCpuTimeLine = QLineEdit()
-
-        jobTabSpanHostsLabel = QLabel('Span Hosts', self.jobTabFrame1)
-        self.jobTabSpanHostsLine = QLineEdit()
 
         jobTabRusageMemLabel = QLabel('Rusage', self.jobTabFrame1)
         self.jobTabRusageMemLine = QLineEdit()
@@ -193,12 +227,12 @@ class mainWindow(QMainWindow):
         jobTabFrame1Grid.addWidget(self.jobTabQueueLine, 2, 1)
         jobTabFrame1Grid.addWidget(jobTabStartedOnLabel, 3, 0)
         jobTabFrame1Grid.addWidget(self.jobTabStartedOnLine, 3, 1)
-        jobTabFrame1Grid.addWidget(jobTabProcessorsRequestedLabel, 4, 0)
-        jobTabFrame1Grid.addWidget(self.jobTabProcessorsRequestedLine, 4, 1)
-        jobTabFrame1Grid.addWidget(jobTabCpuTimeLabel, 5, 0)
-        jobTabFrame1Grid.addWidget(self.jobTabCpuTimeLine, 5, 1)
-        jobTabFrame1Grid.addWidget(jobTabSpanHostsLabel, 6, 0)
-        jobTabFrame1Grid.addWidget(self.jobTabSpanHostsLine, 6, 1)
+        jobTabFrame1Grid.addWidget(jobTabProjectLabel, 4, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabProjectLine, 4, 1)
+        jobTabFrame1Grid.addWidget(jobTabProcessorsRequestedLabel, 5, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabProcessorsRequestedLine, 5, 1)
+        jobTabFrame1Grid.addWidget(jobTabCpuTimeLabel, 6, 0)
+        jobTabFrame1Grid.addWidget(self.jobTabCpuTimeLine, 6, 1)
         jobTabFrame1Grid.addWidget(jobTabRusageMemLabel, 7, 0)
         jobTabFrame1Grid.addWidget(self.jobTabRusageMemLine, 7, 1)
         jobTabFrame1Grid.addWidget(jobTabMemLabel, 8, 0)
@@ -300,12 +334,12 @@ class mainWindow(QMainWindow):
                 self.jobTabCpuTimeLine.setText(self.jobInfoDic[self.currentJob]['cpuTime'] + ' s')
                 self.jobTabCpuTimeLine.setCursorPosition(0)
 
-        # For "Span Hosts" item.
+        # For "Project" item.
         if init:
-            self.jobTabSpanHostsLine.setText('')
+            self.jobTabProjectLine.setText('')
         else:
-            self.jobTabSpanHostsLine.setText(self.jobInfoDic[self.currentJob]['spanHosts'])
-            self.jobTabSpanHostsLine.setCursorPosition(0)
+            self.jobTabProjectLine.setText(self.jobInfoDic[self.currentJob]['project'])
+            self.jobTabProjectLine.setCursorPosition(0)
 
         # For "Rusage" item.
         if init:
@@ -345,7 +379,7 @@ class mainWindow(QMainWindow):
                 self.guiWarning(warningMessage)
             else:
                 # Generate memory curve with the specified job id
-                bmonitor.drawJobMemCurve(self.currentJob)
+                self.myDrawCurve.drawJobMemCurve(self.currentJob)
                 memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
 
                 if os.path.exists(memCurveFig):
@@ -462,8 +496,8 @@ class mainWindow(QMainWindow):
     def genJobsTabTable(self):
         self.jobsTabTable.setShowGrid(True)
         self.jobsTabTable.setSortingEnabled(True)
-        self.jobsTabTable.setColumnCount(10)
-        self.jobsTabTable.setHorizontalHeaderLabels(['Job', 'User', 'Status', 'Queue', 'Host', 'Processers', 'cpuTime', 'Span Hosts', 'Rusage (G)', 'Mem (G)'])
+        self.jobsTabTable.setColumnCount(12)
+        self.jobsTabTable.setHorizontalHeaderLabels(['Job', 'User', 'Status', 'Queue', 'Host', 'Started', 'Project', 'Processers', 'cpuTime', 'Rusage (G)', 'Mem (G)', 'Command'])
 
         command = 'bjobs -UF '
         user = self.jobsTabUserLine.text().strip()
@@ -523,6 +557,17 @@ class mainWindow(QMainWindow):
             self.jobsTabTable.setItem(i, j, item)
 
             j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['startedTime'])
+            self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            if str(jobDic[job]['project']) != '':
+                item = QTableWidgetItem()
+                item.setData(Qt.DisplayRole, jobDic[job]['project'])
+                self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
             if str(jobDic[job]['processorsRequested']) != '':
                 item = QTableWidgetItem()
                 item.setData(Qt.DisplayRole, int(jobDic[job]['processorsRequested']))
@@ -532,12 +577,6 @@ class mainWindow(QMainWindow):
             if str(jobDic[job]['cpuTime']) != '':
                 item = QTableWidgetItem()
                 item.setData(Qt.DisplayRole, int(jobDic[job]['cpuTime']))
-                self.jobsTabTable.setItem(i, j, item)
-
-            j = j+1
-            if str(jobDic[job]['spanHosts']) != '':
-                item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, int(jobDic[job]['spanHosts']))
                 self.jobsTabTable.setItem(i, j, item)
 
             j = j+1
@@ -553,6 +592,11 @@ class mainWindow(QMainWindow):
                 memValue = int(jobDic[job]['mem'])/1024
                 item.setData(Qt.DisplayRole, int(memValue))
                 self.jobsTabTable.setItem(i, j, item)
+
+            j = j+1
+            item = QTableWidgetItem()
+            item.setText(jobDic[job]['command'])
+            self.jobsTabTable.setItem(i, j, item)
 
     def jobsTabCheckClick(self, item=None):
         """
@@ -888,7 +932,7 @@ class mainWindow(QMainWindow):
         self.queuesTabJobNumCurveLabel.setText('queue (PEND/RUN) job number curve')
 
         # Generate queue job number curve with the specified job id
-        bmonitor.drawQueueJobNumCurve(queue)
+        self.myDrawCurve.drawQueueJobNumCurve(queue)
         queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
 
         if os.path.exists(queueJobNumCurveFig):
@@ -924,7 +968,7 @@ class mainWindow(QMainWindow):
 # Main Function #
 #################
 def main():
-    print('Loading openlava status, please wait a moment ...')
+    print('* Loading openlava status, please wait a moment ...')
     app = QApplication(sys.argv)
     mw = mainWindow()
     sys.exit(app.exec_())

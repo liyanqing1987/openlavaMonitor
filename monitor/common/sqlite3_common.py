@@ -12,36 +12,35 @@ from monitor.common import common
 def connectDbFile(dbFile, mode='read'):
     result = 'passed'
     conn = ''
-    curs = ''
 
     if mode == 'write':
         journalDbFile = str(dbFile) + '-journal'
         if os.path.exists(journalDbFile) and (mode == 'write'):
             common.printWarning('*Warning*: database file "' + str(dbFile) + '" is on another connection, will not connect it.')
             result = 'locked'
-            return(result, conn, curs)
+            return(result, conn)
     elif mode == 'read':
         if not os.path.exists(dbFile):
             common.printError('*Error*: "' + str(dbFile) + '" No such database file.')
             result = 'failed'
-            return(result, conn, curs)
+            return(result, conn)
 
     try:
         conn = sqlite3.connect(dbFile)
-        curs = conn.cursor()
     except Exception as error:
         common.printError('*Error*: Failed on connecting database file "' + str(dbFile) + '": ' + str(error))
         result = 'failed'
 
-    return(result, conn, curs)
+    return(result, conn)
 
 def connectPreprocess(dbFile, orig_conn, mode='read'):
     if orig_conn == '':
-        (result, conn, curs) = connectDbFile(dbFile, mode)
+        (result, conn) = connectDbFile(dbFile, mode)
     else:
         result = 'passed'
         conn = orig_conn
-        curs = conn.cursor()
+
+    curs = conn.cursor()
 
     return(result, conn, curs)
 
@@ -134,7 +133,7 @@ def getSqlTableData(dbFile, orig_conn, tableName, keyList=[]):
 
     return(dataDic)
 
-def dropSqlTable(dbFile, orig_conn, tableName):
+def dropSqlTable(dbFile, orig_conn, tableName, commit=True):
     """
     Drop table if it exists.
     """
@@ -146,13 +145,14 @@ def dropSqlTable(dbFile, orig_conn, tableName):
         command = "DROP TABLE IF EXISTS '" + str(tableName) + "'"
         curs.execute(command)
         curs.close()
-        conn.commit()
-        if orig_conn == '':
-            conn.close()
+        if commit:
+            conn.commit()
+            if orig_conn == '':
+                conn.close()
     except Exception as error:
         common.printError('*Error* (dropSqlTable) : Failed on drop table "' + str(tableName) + '" from dbFile "' + str(dbFile) + '": ' + str(error))
 
-def createSqlTable(dbFile, orig_conn, tableName, initString):
+def createSqlTable(dbFile, orig_conn, tableName, initString, commit=True):
     """
     Create a table if it not exists, initialization the setting.
     """
@@ -164,13 +164,14 @@ def createSqlTable(dbFile, orig_conn, tableName, initString):
         command = "CREATE TABLE IF NOT EXISTS '" + str(tableName) + "' " + str(initString)
         curs.execute(command)
         curs.close()
-        conn.commit()
-        if orig_conn == '':
-            conn.close()
+        if commit:
+            conn.commit()
+            if orig_conn == '':
+                conn.close()
     except Exception as error:
         common.printError('*Error* (createSqlTable) : Failed on creating table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
-def insertIntoSqlTable(dbFile, orig_conn, tableName, valueString):
+def insertIntoSqlTable(dbFile, orig_conn, tableName, valueString, commit=True):
     """
     Insert new value into sql table.
     """
@@ -182,9 +183,10 @@ def insertIntoSqlTable(dbFile, orig_conn, tableName, valueString):
         command = "INSERT INTO '" + str(tableName) + "' VALUES " + str(valueString)
         curs.execute(command)
         curs.close()
-        conn.commit()
-        if orig_conn == '':
-            conn.close()
+        if commit:
+            conn.commit()
+            if orig_conn == '':
+                conn.close()
     except Exception as error:
         common.printError('*Error* (insertIntoSqlTable) : Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
