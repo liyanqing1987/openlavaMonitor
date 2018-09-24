@@ -73,22 +73,6 @@ class sampling:
         self.sampleTime = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
         self.currentSeconds = int(time.time())
 
-    def addKeyDateInfo(self, inputKeyList):
-        """
-        Insert date info into key list.
-        """
-        keyList = copy.deepcopy(inputKeyList)
-        keyList.insert(0, 'sampleTime')
-        return(keyList)
-
-    def addValueDateInfo(self, inputValueList):
-        """
-        Insert date info into value list.
-        """
-        valueList = copy.deepcopy(inputValueList)
-        valueList.insert(0, str(self.sampleTime))
-        return(valueList)
-
     def sampleJobInfo(self):
         """
         Sample job info, especially the memory usage info.
@@ -106,6 +90,8 @@ class sampling:
         jobList = list(bjobsDic.keys())
         jobSqlDic = {}
 
+        keyList = ['sampleTime', 'mem']
+
         for job in jobList:
             jobSqlDic[job] = {
                               'drop': False,
@@ -114,14 +100,6 @@ class sampling:
                              }
             jobTableName='job_' + str(job)
             print('    Sampling for job "' + str(job) + '" ...')
-
-            # Insert 'sampleTime' into key list.
-            jobDic = bjobsDic[job]
-            keyList = list(jobDic.keys())
-            keyList.pop()
-            valueList = list(jobDic.values())
-            valueList.pop()
-            valueList = self.addValueDateInfo(valueList)
 
             # If job table (with old data) has been on the jobDbFile, drop it.
             if jobTableName in jobTableList:
@@ -137,11 +115,11 @@ class sampling:
 
             # If job table is not on the jobDbFile, create it.
             if jobTableName not in jobTableList:
-                keyList = self.addKeyDateInfo(keyList)
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
                 jobSqlDic[job]['keyString'] = keyString
 
             # Insert sql table value.
+            valueList = [self.sampleTime, bjobsDic[job]['mem']]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             jobSqlDic[job]['valueString'] = valueString
 
@@ -175,12 +153,9 @@ class sampling:
         bqueuesDic = openlava_common.getBqueuesInfo()
         queueList = bqueuesDic['QUEUE_NAME']
         queueHostDic = openlava_common.getQueueHostInfo()
-
-        # Insert 'sampleTime' into key list.
-        origKeyList = list(bqueuesDic.keys())
-        keyList = self.addKeyDateInfo(origKeyList)
-        keyList.append('HOST')
         queueSqlDic = {}
+
+        keyList = ['sampleTime', 'NJOBS', 'PEND', 'RUN', 'SUSP']
 
         for i in range(len(queueList)):
             queue = queueList[i]
@@ -191,24 +166,13 @@ class sampling:
             queueTableName = 'queue_' + str(queue)
             print('    Sampling for queue "' + str(queue) + '" ...')
 
-            # Get the queue value infos.
-            valueList = []
-            valueList = self.addValueDateInfo(valueList)
-            for key in origKeyList:
-                keyValue = bqueuesDic[key][i]
-                valueList.append(keyValue)
-
-            # Add queue-host info into queue value infos.
-            queueHosts = queueHostDic[queue]
-            hostString = ' '.join(queueHosts)
-            valueList.append(hostString)
-
             # Generate sql table.
             if queueTableName not in queueTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
                 queueSqlDic[queue]['keyString'] = keyString
 
             # Insert sql table value.
+            valueList = [self.sampleTime, bqueuesDic['NJOBS'][i], bqueuesDic['PEND'][i], bqueuesDic['RUN'][i], bqueuesDic['SUSP'][i]]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             queueSqlDic[queue]['valueString'] = valueString
 
@@ -238,11 +202,9 @@ class sampling:
         hostTableList = sqlite3_common.getSqlTableList(hostDbFile, hostDbConn)
         bhostsDic = openlava_common.getBhostsInfo()
         hostList = bhostsDic['HOST_NAME']
-
-        # Insert 'sampleTime' into key list.
-        origKeyList = list(bhostsDic.keys())
-        keyList = self.addKeyDateInfo(origKeyList)
         hostSqlDic = {}
+
+        keyList = ['sampleTime', 'MAX', 'NJOBS', 'RUN', 'SSUSP', 'USUSP']
 
         for i in range(len(hostList)):
             host = hostList[i]
@@ -253,19 +215,13 @@ class sampling:
             hostTableName = 'host_' + str(host)
             print('    Sampling for host "' + str(host) + '" ...')
 
-            # Get the host value infos.
-            valueList = []
-            valueList = self.addValueDateInfo(valueList)
-            for key in origKeyList:
-                keyValue = bhostsDic[key][i]
-                valueList.append(keyValue)
-
             # Generate sql table.
             if hostTableName not in hostTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
                 hostSqlDic[host]['keyString'] = keyString
 
             # Insert sql table value.
+            valueList = [self.sampleTime, bhostsDic['MAX'][i], bhostsDic['NJOBS'][i], bhostsDic['RUN'][i], bhostsDic['SSUSP'][i], bhostsDic['USUSP'][i]]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             hostSqlDic[host]['valueString'] = valueString
 
@@ -295,11 +251,9 @@ class sampling:
         loadTableList = sqlite3_common.getSqlTableList(loadDbFile, loadDbConn)
         lsloadDic = openlava_common.getLsloadInfo()
         hostList = lsloadDic['HOST_NAME']
-
-        # Insert 'sampleTime' into key list.
-        origKeyList = list(lsloadDic.keys())
-        keyList = self.addKeyDateInfo(origKeyList)
         loadSqlDic = {}
+
+        keyList = ['sampleTime', 'ut', 'tmp', 'swp', 'mem']
 
         for i in range(len(hostList)):
             host = hostList[i]
@@ -310,19 +264,13 @@ class sampling:
             loadTableName = 'load_' + str(host)
             print('    Sampling for host "' + str(host) + '" ...')
 
-            # Get the host load value infos.
-            valueList = []
-            valueList = self.addValueDateInfo(valueList)
-            for key in origKeyList:
-                keyValue = lsloadDic[key][i]
-                valueList.append(keyValue)
-
             # Generate sql table.
             if loadTableName not in loadTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
                 loadSqlDic[host]['keyString'] = keyString
 
             # Insert sql table value.
+            valueList = [self.sampleTime, lsloadDic['ut'][i], lsloadDic['tmp'][i], lsloadDic['swp'][i], lsloadDic['mem'][i]]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             loadSqlDic[host]['valueString'] = valueString
 
@@ -352,11 +300,9 @@ class sampling:
         userTableList = sqlite3_common.getSqlTableList(userDbFile, userDbConn)
         busersDic = openlava_common.getBusersInfo()
         userList = busersDic['USER/GROUP']
-
-        # Insert 'sampleTime' into key list.
-        origKeyList = list(busersDic.keys())
-        keyList = self.addKeyDateInfo(origKeyList)
         userSqlDic = {}
+
+        keyList = ['sampleTime', 'NJOBS', 'PEND', 'RUN', 'SSUSP', 'USUSP']
 
         for i in range(len(userList)):
             user = userList[i]
@@ -367,19 +313,13 @@ class sampling:
             userTableName = 'user_' + str(user)
             print('    Sampling for user "' + str(user) + '" ...')
 
-            # Get the user value infos.
-            valueList = []
-            valueList = self.addValueDateInfo(valueList)
-            for key in origKeyList:
-                keyValue = busersDic[key][i]
-                valueList.append(keyValue)
-
             # Generate sql table.
             if userTableName not in userTableList:
                 keyString = sqlite3_common.genSqlTableKeyString(keyList)
                 userSqlDic[user]['keyString'] = keyString
 
             # Insert sql table value.
+            valueList = [self.sampleTime, busersDic['NJOBS'][i], busersDic['PEND'][i], busersDic['RUN'][i], busersDic['SSUSP'][i], busersDic['USUSP'][i]]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             userSqlDic[user]['valueString'] = valueString
 

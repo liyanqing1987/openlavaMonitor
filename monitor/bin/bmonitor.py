@@ -46,12 +46,10 @@ class drawCurve():
         """
         Draw memory usage curve for specified job.
         """
-        print('Drawing memory curve for job "' + str(job) + '".')
-    
         if self.jobDbFileConnectResult == 'failed':
             common.printWarning('*Warning*: Failed on connectiong job database file "' + str(self.jobDbFile) + '".')
             return
-    
+
         runTimeList = []
         memList  = []
 
@@ -59,6 +57,7 @@ class drawCurve():
             common.printWarning('*Warning*: It is the first time loading job database, it may cost a little time ...')
             self.jobFirstLoad = False
 
+        print('Getting history of job memory usage for job "' + str(job) + '".')
         tableName = 'job_' + str(job)
         dataDic = sqlite3_common.getSqlTableData(self.jobDbFile, self.jobDbConn, tableName, ['sampleTime', 'mem'])
 
@@ -83,18 +82,16 @@ class drawCurve():
                 realMem = round(int(mem)/1024, 1)
                 realMemList.append(realMem)
 
-            memCurveFig = str(config.tempPath) + '/' + str(self.user) + '_' + str(job) + '.png'
+            memCurveFig = str(config.tmpPath) + '/' + str(self.user) + '_' + str(job) + '.png'
             jobNum = common.stringToInt(job)
 
-            print('Save memory curve as "' + str(memCurveFig) + '".')
+            print('Save job memory curve as "' + str(memCurveFig) + '".')
             common.drawPlot(realRunTimeList, realMemList, 'runTime (Minitu)', 'memory (G)', yUnit='G', title='job : ' + str(job), saveName=memCurveFig, figureNum=jobNum)
 
     def drawQueueJobNumCurve(self, queue):
         """
         Draw (PEND/RUN) job number curve for specified queue.
         """
-        print('Drawing queue (PEND/RUN) job num curve for queue "' + str(queue) + '".')
-
         if self.queueDbFileConnectResult == 'failed':
             common.printWarning('*Warning*: Failed on connectiong queue database file "' + str(self.queueDbFile) + '".')
             return
@@ -102,13 +99,14 @@ class drawCurve():
         dateList = []
         pendList = []
         runList = []
-        tempPendList = []
-        tempRunList = []
+        tmpPendList = []
+        tmpRunList = []
 
         if self.queueFirstLoad:
             common.printWarning('*Warning*: It is the first time loading queue database, it may cost a little time ...')
             self.queueFirstLoad = False
 
+        print('Getting history of queue PEND/RUN job number for queue "' + str(queue) + '".')
         tableName = 'queue_' + str(queue)
         dataDic = sqlite3_common.getSqlTableData(self.queueDbFile, self.queueDbConn, tableName, ['sampleTime', 'PEND', 'RUN'])
 
@@ -127,18 +125,18 @@ class drawCurve():
                 runNum = origRunList[i]
 
                 if (i != 0) and ((i == len(origSampleTimeList)-1) or (date not in dateList)):
-                    pendAvg = int(sum(tempPendList)/len(tempPendList))
+                    pendAvg = int(sum(tmpPendList)/len(tmpPendList))
                     pendList.append(pendAvg)
-                    runAvg = int(sum(tempRunList)/len(tempRunList))
+                    runAvg = int(sum(tmpRunList)/len(tmpRunList))
                     runList.append(runAvg)
 
                 if date not in dateList:
                     dateList.append(date)
-                    tempPendList = []
-                    tempRunList = []
+                    tmpPendList = []
+                    tmpRunList = []
 
-                tempPendList.append(int(pendNum))
-                tempRunList.append(int(runNum))
+                tmpPendList.append(int(pendNum))
+                tmpRunList.append(int(runNum))
 
             # Cut dateList/pendList/runList, only save 15 days result.a
             if len(dateList) > 15:
@@ -150,7 +148,7 @@ class drawCurve():
                 common.printWarning('*Warning*: PEND/RUN job number information is missing for queue "' + str(queue) + '".')
                 return
             else:
-                queueJobNumCurveFig = str(config.tempPath) + '/' + str(self.user) + '_' + str(queue) + '_jobNum.png'
+                queueJobNumCurveFig = str(config.tmpPath) + '/' + str(self.user) + '_' + str(queue) + '_jobNum.png'
                 queueNum = common.stringToInt(queue)
 
                 print('Save queue PEND/RUN job numeber curve as "' + str(queueJobNumCurveFig) + '".')

@@ -20,13 +20,13 @@ then update file config.py for your own configuration.
 
     installPath = "***"
     dbPath      = "***/db"
-    tempPath    = "***/temp"
+    tmpPath     = "***/tmp"
 
 "installPath" is the install path, don't edit it.
 "dbPath" is used to save database files, default is on <INSTALL>/db,
 you can re-point it into your own path.
-"tempPath" is used to save temporary files, default is on
-<INSTALL_PATH>/temp, you can re-point it into your own path.
+"tmpPath" is used to save temporary files, default is on
+<INSTALL_PATH>/tmp, you can re-point it into your own path.
 
 
 SAMPLING:

@@ -30,7 +30,7 @@ print('\n>>> Generate config file.')
 
 installPath = os.getcwd()
 dbPath = str(installPath) + '/db'
-tempPath = str(installPath) + '/temp'
+tmpPath = str(installPath) + '/tmp'
 configFile = str(installPath) + '/monitor/conf/config.py'
 print('    Config file : ' + str(configFile))
 
@@ -43,11 +43,11 @@ else:
             CF.write('installPath = "' + str(installPath) + '"\n')
             print('        dbPath      = "' + str(dbPath) + '"')
             CF.write('dbPath      = "' + str(dbPath) + '"\n')
-            print('        tempPath    = "' + str(tempPath) + '"')
-            CF.write('tempPath    = "' + str(tempPath) + '"\n')
+            print('        tmpPath     = "' + str(tmpPath) + '"')
+            CF.write('tmpPath     = "' + str(tmpPath) + '"\n')
         os.chmod(configFile, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
         os.chmod(dbPath, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
-        os.chmod(tempPath, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+        os.chmod(tmpPath, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
     except Exception as error:
         print('*Error*: Failed on opening config file "' + str(configFile) + '" for write: ' + str(error))
         sys.exit(1)
@@ -56,7 +56,7 @@ else:
 ## Replace string "PYTHONPATH" into the real python path on all of the python files.
 print('>>> Update python path for main executable programs.')
 
-pythonFiles = ['monitor/bin/bsample.py', 'monitor/bin/bmonitor.py', 'monitor/bin/bmonitorGUI.py']
+pythonFiles = ['monitor/bin/bsample.py', 'monitor/bin/bmonitor.py', 'monitor/bin/bmonitorGUI.py', 'monitor/tools/seedb.py']
 currentPython = sys.executable
 currentPythonEscaping = re.sub('/', '\/', currentPython)
 
@@ -78,7 +78,7 @@ def read(fname):
 
 setup(
     name='openlavaMonitor',
-    version='1.2',
+    version='1.3',
     author='yanqing.li',
     author_email='liyanqing1987@163.com',
     url='https://github.com/liyanqing1987/openlavaMonitor/',

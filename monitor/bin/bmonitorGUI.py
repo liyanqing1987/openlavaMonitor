@@ -380,7 +380,7 @@ class mainWindow(QMainWindow):
             else:
                 # Generate memory curve with the specified job id
                 self.myDrawCurve.drawJobMemCurve(self.currentJob)
-                memCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
+                memCurveFig = str(config.tmpPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
 
                 if os.path.exists(memCurveFig):
                     pixMap = QPixmap(memCurveFig).scaled(self.jobTabMemCurveLabel.width(), self.jobTabMemCurveLabel.height())
@@ -933,7 +933,7 @@ class mainWindow(QMainWindow):
 
         # Generate queue job number curve with the specified job id
         self.myDrawCurve.drawQueueJobNumCurve(queue)
-        queueJobNumCurveFig = str(config.tempPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
+        queueJobNumCurveFig = str(config.tmpPath) + '/' + str(user) + '_' + str(queue) + '_jobNum.png'
 
         if os.path.exists(queueJobNumCurveFig):
             pixMap = QPixmap(queueJobNumCurveFig).scaled(self.queuesTabJobNumCurveLabel.width(), self.queuesTabJobNumCurveLabel.height())
