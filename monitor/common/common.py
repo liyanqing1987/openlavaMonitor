@@ -45,7 +45,11 @@ def drawPlot(xList, yList, xLabel, yLabel, xIsString=False, yUnit='', title='', 
     pyplot.ylabel(yLabel)
 
     pyplot.grid(True)
-    pyplot.subplots_adjust(bottom=0.15)
+
+    if xIsString:
+        pyplot.subplots_adjust(bottom=0.2)
+    else:
+        pyplot.subplots_adjust(bottom=0.15)
 
     # Set title.
     if title != '':
@@ -109,7 +113,11 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
     pyplot.ylabel(yLabel)
 
     pyplot.grid(True)
-    pyplot.subplots_adjust(bottom=0.15)
+
+    if xIsString:
+        pyplot.subplots_adjust(bottom=0.2)
+    else:
+        pyplot.subplots_adjust(bottom=0.15)
 
     # Set title.
     if title != '':
