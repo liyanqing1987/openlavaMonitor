@@ -78,7 +78,7 @@ def read(fname):
 
 setup(
     name='openlavaMonitor',
-    version='1.3',
+    version='2.0',
     author='yanqing.li',
     author_email='liyanqing1987@163.com',
     url='https://github.com/liyanqing1987/openlavaMonitor/',
