@@ -69,6 +69,30 @@ def getSqlTableList(dbFile, orig_conn):
 
     return(tableList)
 
+def getSqlTableCount(dbFile, orig_conn, tableName):
+    """
+    How many lines of the database table.
+    """
+    count = 'N/A'
+
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn)
+    if result == 'failed':
+        return(count)
+
+    try:
+        command = "SELECT count(*) FROM '" + str(tableName) + "'"
+        curs.execute(command)
+        returnList = curs.fetchall()
+        returnTuple = returnList[0]
+        count = returnTuple[0]
+        curs.close()
+        if orig_conn == '':
+            conn.close()
+    except Exception as error:
+        common.printError('*Error* (getSqlTableCount) : Failed on getting table count fro table "' + str(tableName) + '" on dbFile "' + str(dbFile) + '": ' + str(error))
+
+    return(count)
+
 def getSqlTableKeyList(dbFile, orig_conn, tableName):
     """
     Get all of the tables from the specified db file.
@@ -132,6 +156,25 @@ def getSqlTableData(dbFile, orig_conn, tableName, keyList=[]):
         common.printError('*Error* (getSqlTableData) : Failed on getting table info from table "' + str(tableName) + '" of dbFile "' + str(dbFile) + '": ' + str(error))
 
     return(dataDic)
+
+def deleteSqlTableRows(dbFile, orig_conn, tableName, rowId, beginLine, endLine, commit=True):
+    """
+    Delete specified table rows (from beginLine to endLine).
+    """
+    (result, conn, curs) = connectPreprocess(dbFile, orig_conn, mode='write')
+    if (result == 'failed') or (result == 'locked'):
+        return
+
+    try:
+        command = "DELETE FROM '" + str(tableName) + "' WHERE " + str(rowId) + " IN (SELECT " + str(rowId) + " FROM '" + str(tableName) + "' ORDER BY " + str(rowId) + " LIMIT " + str(beginLine) + "," + str(endLine) + ")"
+        curs.execute(command)
+        curs.close()
+        if commit:
+            conn.commit()
+            if orig_conn == '':
+                conn.close()
+    except Exception as error:
+        common.printError('*Error* (dropSqlTable) : Failed on deleting table "' + str(tableName) + '" lines ' + str(beginLine) + '-' + str(endLine) + ': ' + str(error))
 
 def dropSqlTable(dbFile, orig_conn, tableName, commit=True):
     """

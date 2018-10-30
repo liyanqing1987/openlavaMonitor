@@ -81,33 +81,31 @@ class mainWindow(QMainWindow):
         self.resize(1111, 620)
         pyqt5_common.centerWindow(self)
         self.setWindowTitle('openlavaMonitor')
-        self.show()
 
     def genMenubar(self):
         """
         Generate menubar.
         """
-        self.menubar = self.menuBar()
+        menubar = self.menuBar()
 
         # File
         exitAction = QAction('Quit', self)
         exitAction.triggered.connect(qApp.quit)
 
-        fileMenu = self.menubar.addMenu('File')
+        fileMenu = menubar.addMenu('File')
         fileMenu.addAction(exitAction)
 
         # Setup
         freshAction = QAction('Fresh', self)
         freshAction.triggered.connect(self.fresh)
 
-        setupMenu = self.menubar.addMenu('Setup')
+        setupMenu = menubar.addMenu('Setup')
         setupMenu.addAction(freshAction)
 
     def fresh(self):
         print('* Re-Loading openlava status, please wait a moment ...')
         self.freshMark = True
         self.initUI()
-
 
 ## Common sub-functions (begin) ##
     def guiWarning(self, warningMessage):
@@ -470,9 +468,13 @@ class mainWindow(QMainWindow):
         self.jobsTabStartedOnCombo = QComboBox(self.jobsTabFrame0)
         self.setJobsTabStartedOnCombo()
 
+        self.jobsTabStatusCombo.currentIndexChanged.connect(self.genJobsTabTable)
+        self.jobsTabQueueCombo.currentIndexChanged.connect(self.genJobsTabTable)
+        self.jobsTabStartedOnCombo.currentIndexChanged.connect(self.genJobsTabTable)
+
         jobsTabCheckButton = QPushButton('Check', self.jobsTabFrame0)
         jobsTabCheckButton.clicked.connect(self.genJobsTabTable)
-       
+
         # self.jobsTabFrame0 - Grid
         jobsTabFrame0Grid = QGridLayout()
 
@@ -619,31 +621,91 @@ class mainWindow(QMainWindow):
         Generate the hosts tab on openlavaMonitor GUI, show hosts informations.
         """
         # self.hostsTabTable
+        self.hostsTabFrame0 = QFrame(self.hostsTab)
+        self.hostsTabFrame0.setFrameShadow(QFrame.Raised)
+        self.hostsTabFrame0.setFrameShape(QFrame.Box)
+
         self.hostsTabTable = QTableWidget(self.hostsTab)
         self.hostsTabTable.itemClicked.connect(self.hostsTabCheckClick)
 
         # self.hostsTabTable - Grid
         hostsTabGrid = QGridLayout()
-        hostsTabGrid.addWidget(self.hostsTabTable, 0, 0)
+
+        hostsTabGrid.addWidget(self.hostsTabFrame0, 0, 0)
+        hostsTabGrid.addWidget(self.hostsTabTable, 1, 0)
+
+        hostsTabGrid.setRowStretch(0, 1)
+        hostsTabGrid.setRowStretch(1, 10)
+
         self.hostsTab.setLayout(hostsTabGrid)
 
-        # Initial setting
+        # Generate sub-fram
+        self.genHostsTabFrame0()
         self.genHostsTabTable()
 
+    def setHostsTabQueueCombo(self, queueList=[]):
+        """
+        Set (initialize) self.hostsTabQueueCombo.
+        """
+        self.hostsTabQueueCombo.clear()
+        if len(queueList) == 0:
+            queueList = copy.deepcopy(self.queueList)
+            queueList.insert(0, 'ALL')
+        for queue in queueList:
+            self.hostsTabQueueCombo.addItem(queue)
+
+    def genHostsTabFrame0(self):
+        # self.hostsTabFrame0
+        hostsTabQueueLabel = QLabel('       Queue', self.hostsTabFrame0)
+        hostsTabQueueLabel.setStyleSheet("font-weight: bold;")
+        self.hostsTabQueueCombo = QComboBox(self.hostsTabFrame0)
+        self.setHostsTabQueueCombo()
+        self.hostsTabQueueCombo.currentIndexChanged.connect(self.genHostsTabTable)
+        hostsTabEmptyLabel = QLabel('')
+
+        # self.hostsTabFrame0 - Grid
+        hostsTabFrame0Grid = QGridLayout()
+
+        hostsTabFrame0Grid.addWidget(hostsTabQueueLabel, 0, 1)
+        hostsTabFrame0Grid.addWidget(self.hostsTabQueueCombo, 0, 2)
+        hostsTabFrame0Grid.addWidget(hostsTabEmptyLabel, 0, 3)
+
+        hostsTabFrame0Grid.setColumnStretch(1, 1)
+        hostsTabFrame0Grid.setColumnStretch(2, 1)
+        hostsTabFrame0Grid.setColumnStretch(3, 8)
+
+        self.hostsTabFrame0.setLayout(hostsTabFrame0Grid)
+
     def genHostsTabTable(self):
+        print('* Updating hosts information, please wait a moment ...')
+
         self.hostsTabTable.setShowGrid(True)
         self.hostsTabTable.setSortingEnabled(True)
-        self.hostsTabTable.setRowCount(len(self.hostList))
         self.hostsTabTable.setColumnCount(10)
         self.hostsTabTable.setHorizontalHeaderLabels(['Host', 'Status', 'Queue', 'Njobs', 'Ncpus', 'Ut (%)', 'Mem (G)', 'Maxmem (G)', 'swp (G)', 'maxswp (G)'])
+
+        queue = self.hostsTabQueueCombo.currentText().strip()
 
         bhostsDic  = openlava_common.getBhostsInfo()
         lshostsDic = openlava_common.getLshostsInfo()
         lsloadDic  = openlava_common.getLsloadInfo()
         hostQueueDic = openlava_common.getHostQueueInfo()
 
-        for i in range(len(self.hostList)):
-            host = self.hostList[i]
+        # Get expected host list
+        self.queueHostList = []
+
+        if queue == 'ALL':
+            self.queueHostList = self.hostList
+        else:
+            for host in self.hostList:
+                if queue in hostQueueDic[host]:
+                    self.queueHostList.append(host)
+
+        self.hostsTabTable.setRowCount(len(self.queueHostList))
+
+        for i in range(len(self.queueHostList)):
+            host = self.queueHostList[i]
+
             j = 0
             self.hostsTabTable.setItem(i, j, QTableWidgetItem(host))
 
@@ -768,7 +830,7 @@ class mainWindow(QMainWindow):
                     self.setJobsTabStatusCombo()
                     self.setJobsTabQueueCombo()
 
-                    hostList = copy.deepcopy(self.hostList)
+                    hostList = copy.deepcopy(self.queueHostList)
                     hostList.remove(host)
                     hostList.insert(0, host)
                     hostList.insert(1, 'ALL')
@@ -830,7 +892,7 @@ class mainWindow(QMainWindow):
         self.queuesTabTable.setColumnCount(3)
         self.queuesTabTable.setHorizontalHeaderLabels(['QUEUE', 'PEND', 'RUN'])
 
-        # Hide the vertical header.
+        # Hide the vertical header
         self.queuesTabTable.verticalHeader().setVisible(False)
 
         queuesDic = openlava_common.getBqueuesInfo()
@@ -957,7 +1019,6 @@ class mainWindow(QMainWindow):
         pyqt5_common.textEditVisiblePosition(self.queuesTabText, 'Start')
 ## For queues TAB (end) ## 
 
-
     def closeEvent(self, QCloseEvent):
         """
         When window close, post-process.
@@ -971,6 +1032,7 @@ def main():
     print('* Loading openlava status, please wait a moment ...')
     app = QApplication(sys.argv)
     mw = mainWindow()
+    mw.show()
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

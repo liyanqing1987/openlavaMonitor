@@ -21,12 +21,7 @@ os.environ["PYTHONUNBUFFERED"]="1"
 class drawCurve():
     def __init__(self):
         self.user = getpass.getuser()
-        self.jobDbFile= str(config.dbPath) + '/job.db'
         self.queueDbFile= str(config.dbPath) + '/queue.db'
-
-        (self.jobDbFileConnectResult, self.jobDbConn) = sqlite3_common.connectDbFile(self.jobDbFile)
-        if self.jobDbFileConnectResult == 'failed':
-            common.printWarning('*Warning*: Failed on connectiong job database file "' + str(self.jobDbFile) + '".')
 
         (self.queueDbFileConnectResult, self.queueDbConn) = sqlite3_common.connectDbFile(self.queueDbFile)
         if self.queueDbFileConnectResult == 'failed':
@@ -36,9 +31,6 @@ class drawCurve():
         self.queueFirstLoad = True
 
     def __clear__(self):
-        if self.jobDbFileConnectResult == 'passed':
-            self.jobDbConn.close()
-
         if self.queueDbFileConnectResult == 'passed':
             self.queueDbConn.close()
 
@@ -46,6 +38,12 @@ class drawCurve():
         """
         Draw memory usage curve for specified job.
         """
+        jobRangeDic = common.getJobRangeDic([job,])
+        jobRangeList = list(jobRangeDic.keys())
+        jobRange = jobRangeList[0]
+        self.jobDbFile= str(config.dbPath) + '/job/' + str(jobRange) + '.db'
+
+        (self.jobDbFileConnectResult, self.jobDbConn) = sqlite3_common.connectDbFile(self.jobDbFile)
         if self.jobDbFileConnectResult == 'failed':
             common.printWarning('*Warning*: Failed on connectiong job database file "' + str(self.jobDbFile) + '".')
             return
@@ -87,6 +85,9 @@ class drawCurve():
 
             print('Save job memory curve as "' + str(memCurveFig) + '".')
             common.drawPlot(realRunTimeList, realMemList, 'runTime (Minitu)', 'memory (G)', yUnit='G', title='job : ' + str(job), saveName=memCurveFig, figureNum=jobNum)
+
+        if self.jobDbFileConnectResult == 'passed':
+            self.jobDbConn.close()
 
     def drawQueueJobNumCurve(self, queue):
         """

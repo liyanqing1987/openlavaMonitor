@@ -78,63 +78,79 @@ class sampling:
         Sample job info, especially the memory usage info.
         """
         self.getDateInfo()
-        jobDbFile = str(self.dbPath) + '/job.db'
-        (result, jobDbConn) = sqlite3_common.connectDbFile(jobDbFile, mode='write')
-        if result != 'passed':
-            return
 
-        print('>>> Sampling job info into ' + str(jobDbFile) + ' ...')
+        print('>>> Sampling job info ...')
 
-        jobTableList = sqlite3_common.getSqlTableList(jobDbFile, jobDbConn)
         bjobsDic = openlava_common.getBjobsUfInfo()
         jobList = list(bjobsDic.keys())
+        jobRangeDic = common.getJobRangeDic(jobList)
         jobSqlDic = {}
 
         keyList = ['sampleTime', 'mem']
 
-        for job in jobList:
-            jobSqlDic[job] = {
-                              'drop': False,
-                              'keyString': '',
-                              'valueString': '',
-                             }
-            jobTableName='job_' + str(job)
-            print('    Sampling for job "' + str(job) + '" ...')
+        for jobRange in jobRangeDic.keys():
+            jobDbFile = str(self.dbPath) + '/job/' + str(jobRange) + '.db'
+            (result, jobDbConn) = sqlite3_common.connectDbFile(jobDbFile, mode='read')
 
-            # If job table (with old data) has been on the jobDbFile, drop it.
-            if jobTableName in jobTableList:
-                dataDic = sqlite3_common.getSqlTableData(jobDbFile, jobDbConn, jobTableName, ['sampleTime'])
-                if dataDic:
-                    if len(dataDic['sampleTime']) > 0:
-                        lastSampleTime = dataDic['sampleTime'][-1]
-                        lastSeconds = int(time.mktime(datetime.datetime.strptime(str(lastSampleTime), "%Y%m%d_%H%M%S").timetuple()))
-                        if self.currentSeconds-lastSeconds > 3600:
-                            common.printWarning('    *Warning*: table "' + str(jobTableName) + '" already existed even one hour ago, will drop it.')
-                            jobSqlDic[job]['drop'] = True
-                            jobTableList.remove(jobTableName)
+            if result == 'passed':
+                jobTableList = sqlite3_common.getSqlTableList(jobDbFile, jobDbConn)
+            else:
+                jobTableList = []
 
-            # If job table is not on the jobDbFile, create it.
-            if jobTableName not in jobTableList:
-                keyString = sqlite3_common.genSqlTableKeyString(keyList)
-                jobSqlDic[job]['keyString'] = keyString
+            for job in jobRangeDic[jobRange]:
+                jobTableName='job_' + str(job)
+                print('    Sampling for job "' + str(job) + '" ...')
+                jobSqlDic[job] = {
+                                  'drop': False,
+                                  'keyString': '',
+                                  'valueString': '',
+                                 }
 
-            # Insert sql table value.
-            valueList = [self.sampleTime, bjobsDic[job]['mem']]
-            valueString = sqlite3_common.genSqlTableValueString(valueList)
-            jobSqlDic[job]['valueString'] = valueString
+                # If job table (with old data) has been on the jobDbFile, drop it.
+                if jobTableName in jobTableList:
+                    dataDic = sqlite3_common.getSqlTableData(jobDbFile, jobDbConn, jobTableName, ['sampleTime'])
+                    if dataDic:
+                        if len(dataDic['sampleTime']) > 0:
+                            lastSampleTime = dataDic['sampleTime'][-1]
+                            lastSeconds = int(time.mktime(datetime.datetime.strptime(str(lastSampleTime), "%Y%m%d_%H%M%S").timetuple()))
+                            if self.currentSeconds-lastSeconds > 3600:
+                                common.printWarning('    *Warning*: table "' + str(jobTableName) + '" already existed even one hour ago, will drop it.')
+                                jobSqlDic[job]['drop'] = True
+                                jobTableList.remove(jobTableName)
 
-        for job in jobSqlDic.keys():
-            jobTableName='job_' + str(job)
-            if jobSqlDic[job]['drop']:
-                sqlite3_common.dropSqlTable(jobDbFile, jobDbConn, jobTableName, commit=False)
-            if jobSqlDic[job]['keyString'] != '':
-                sqlite3_common.createSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['keyString'], commit=False)
-            if jobSqlDic[job]['valueString'] != '':
-                sqlite3_common.insertIntoSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['valueString'], commit=False)
+                # If job table is not on the jobDbFile, create it.
+                if jobTableName not in jobTableList:
+                    keyString = sqlite3_common.genSqlTableKeyString(keyList)
+                    jobSqlDic[job]['keyString'] = keyString
+
+                # Insert sql table value.
+                valueList = [self.sampleTime, bjobsDic[job]['mem']]
+                valueString = sqlite3_common.genSqlTableValueString(valueList)
+                jobSqlDic[job]['valueString'] = valueString
+
+            if result == 'passed':
+                jobDbConn.commit()
+                jobDbConn.close()
+
+        for jobRange in jobRangeDic.keys():
+            jobDbFile = str(self.dbPath) + '/job/' + str(jobRange) + '.db'
+            (result, jobDbConn) = sqlite3_common.connectDbFile(jobDbFile, mode='write')
+            if result != 'passed':
+                return
+
+            for job in jobRangeDic[jobRange]:
+                jobTableName='job_' + str(job)
+                if jobSqlDic[job]['drop']:
+                    sqlite3_common.dropSqlTable(jobDbFile, jobDbConn, jobTableName, commit=False)
+                if jobSqlDic[job]['keyString'] != '':
+                    sqlite3_common.createSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['keyString'], commit=False)
+                if jobSqlDic[job]['valueString'] != '':
+                    sqlite3_common.insertIntoSqlTable(jobDbFile, jobDbConn, jobTableName, jobSqlDic[job]['valueString'], commit=False)
+
+            jobDbConn.commit()
+            jobDbConn.close()
 
         print('    Committing the update to sqlite3 ...')
-        jobDbConn.commit()
-        jobDbConn.close()
         print('    Done (' + str(len(jobList)) + ' jobs).')
 
     def sampleQueueInfo(self):
@@ -184,6 +200,19 @@ class sampling:
                 sqlite3_common.insertIntoSqlTable(queueDbFile, queueDbConn, queueTableName, queueSqlDic[queue]['valueString'], commit=False)
 
         print('    Committing the update to sqlite3 ...')
+
+        # Clean up queue database, only keep 10000 items.
+        for queue in queueList:
+            queueTableName = 'queue_' + str(queue)
+            queueTableCount = int(sqlite3_common.getSqlTableCount(queueDbFile, queueDbConn, queueTableName))
+            if queueTableCount != 'N/A':
+                if int(queueTableCount) > 10000:
+                    rowId = 'sampleTime'
+                    beginLine = 0
+                    endLine = int(queueTableCount) - 10000
+                    print('    Deleting database "' + str(queueDbFile) + '" table "' + str(queueTableName) + '" ' + str(beginLine) + '-' + str(endLine) + ' lines to only keep 10000 items.')
+                    sqlite3_common.deleteSqlTableRows(queueDbFile, queueDbConn, queueTableName, rowId, beginLine, endLine)
+
         queueDbConn.commit()
         queueDbConn.close()
 
@@ -233,6 +262,19 @@ class sampling:
                 sqlite3_common.insertIntoSqlTable(hostDbFile, hostDbConn, hostTableName, hostSqlDic[host]['valueString'], commit=False)
 
         print('    Committing the update to sqlite3 ...')
+
+        # Clean up host database, only keep 10000 items.
+        for host in hostList:
+            hostTableName = 'host_' + str(host)
+            hostTableCount = int(sqlite3_common.getSqlTableCount(hostDbFile, hostDbConn, hostTableName))
+            if hostTableCount != 'N/A':
+                if int(hostTableCount) > 10000:
+                    rowId = 'sampleTime'
+                    beginLine = 0
+                    endLine = int(hostTableCount) - 10000
+                    print('    Deleting database "' + str(hostDbFile) + '" table "' + str(hostTableName) + '" ' + str(beginLine) + '-' + str(endLine) + ' lines to only keep 10000 items.')
+                    sqlite3_common.deleteSqlTableRows(hostDbFile, hostDbConn, hostTableName, rowId, beginLine, endLine)
+
         hostDbConn.commit()
         hostDbConn.close()
 
@@ -282,6 +324,19 @@ class sampling:
                 sqlite3_common.insertIntoSqlTable(loadDbFile, loadDbConn, loadTableName, loadSqlDic[host]['valueString'], commit=False)
 
         print('    Committing the update to sqlite3 ...')
+
+        # Clean up load database, only keep 10000 items.
+        for host in hostList:
+            loadTableName = 'load_' + str(host)
+            loadTableCount = int(sqlite3_common.getSqlTableCount(loadDbFile, loadDbConn, loadTableName))
+            if loadTableCount != 'N/A':
+                if int(loadTableCount) > 10000:
+                    rowId = 'sampleTime'
+                    beginLine = 0
+                    endLine = int(loadTableCount) - 10000
+                    print('    Deleting database "' + str(loadDbFile) + '" table "' + str(loadTableName) + '" ' + str(beginLine) + '-' + str(endLine) + ' lines to only keep 10000 items.')
+                    sqlite3_common.deleteSqlTableRows(loadDbFile, loadDbConn, loadTableName, rowId, beginLine, endLine)
+
         loadDbConn.commit()
         loadDbConn.close()
 
@@ -331,6 +386,19 @@ class sampling:
                 sqlite3_common.insertIntoSqlTable(userDbFile, userDbConn, userTableName, userSqlDic[user]['valueString'], commit=False)
 
         print('    Committing the update to sqlite3 ...')
+
+        # Clean up user database, only keep 10000 items.
+        for user in userList:
+            userTableName = 'user_' + str(user)
+            userTableCount = int(sqlite3_common.getSqlTableCount(userDbFile, userDbConn, userTableName))
+            if userTableCount != 'N/A':
+                if int(userTableCount) > 10000:
+                    rowId = 'sampleTime'
+                    beginLine = 0
+                    endLine = int(userTableCount) - 10000
+                    print('    Deleting database "' + str(userDbFile) + '" table "' + str(userTableName) + '" ' + str(beginLine) + '-' + str(endLine) + ' lines to only keep 10000 items.')
+                    sqlite3_common.deleteSqlTableRows(userDbFile, userDbConn, userTableName, rowId, beginLine, endLine)
+
         userDbConn.commit()
         userDbConn.close()
 

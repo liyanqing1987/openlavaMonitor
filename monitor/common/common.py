@@ -72,7 +72,7 @@ def drawPlot(xList, yList, xLabel, yLabel, xIsString=False, yUnit='', title='', 
         else:
             pyplot.ylim(1.1*yMin-0.1*yMax, 1.1*yMax-0.1*yMin)
 
-    # Show the hight/avrage/low value.
+    # Show the peak value.
     pyplot.text(xMin, yMax, 'peak: ' + str(yMax) + str(yUnit))
 
     # Save fig, or show it.
@@ -129,3 +129,16 @@ def drawPlots(xList, yLists, xLabel, yLabel, yLabels, xIsString=False, title='',
         os.chmod(saveName, stat.S_IRWXU|stat.S_IRWXG|stat.S_IRWXO)
     else:
         fig.show()
+
+def getJobRangeDic(jobList):
+    jobRangeDic = {}
+
+    for job in jobList:
+        jobHead = (int(int(job)/10000))*10000
+        jobTail = jobHead + 9999
+        jobRange = str(jobHead)  + '_' + str(jobTail)
+        if jobRange not in jobRangeDic:
+            jobRangeDic[jobRange] = []
+        jobRangeDic[jobRange].append(job)
+
+    return(jobRangeDic)
