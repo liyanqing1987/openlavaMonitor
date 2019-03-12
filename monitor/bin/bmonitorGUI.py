@@ -896,18 +896,27 @@ class mainWindow(QMainWindow):
         self.queuesTabTable.verticalHeader().setVisible(False)
 
         queuesDic = openlava_common.getBqueuesInfo()
-        self.queuesTabTable.setRowCount(len(self.queueList))
+        self.queuesTabTable.setRowCount(len(self.queueList)+1)
+        queueList = copy.deepcopy(self.queueList)
+        queueList.append('ALL')
+        pendSum = 0
+        runSum = 0
 
-        for i in range(len(self.queueList)):
-            queue = self.queueList[i]
-            index = queuesDic['QUEUE_NAME'].index(queue)
+        for i in range(len(queueList)):
+            queue = queueList[i]
+            if i < len(queueList)-1:
+                index = queuesDic['QUEUE_NAME'].index(queue)
 
             j = 0
             item = QTableWidgetItem(queue)
             self.queuesTabTable.setItem(i, j, item)
 
             j = j+1
-            pend = queuesDic['PEND'][index]
+            if i == len(queueList)-1:
+                pend = str(pendSum)
+            else:
+                pend = queuesDic['PEND'][index]
+                pendSum += int(pend)
             item = QTableWidgetItem(pend)
             if int(pend) > 0:
                 item.setFont(QFont('song', 10, QFont.Bold))
@@ -915,7 +924,11 @@ class mainWindow(QMainWindow):
             self.queuesTabTable.setItem(i, j, item)
 
             j = j+1
-            run = queuesDic['RUN'][index]
+            if i == len(queueList)-1:
+                run = str(runSum)
+            else:
+                run = queuesDic['RUN'][index]
+                runSum += int(run)
             item = QTableWidgetItem(run)
             self.queuesTabTable.setItem(i, j, item)
 
