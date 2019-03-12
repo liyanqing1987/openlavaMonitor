@@ -372,10 +372,7 @@ class mainWindow(QMainWindow):
         self.jobTabMemCurveLabel.setText('Job memory curve')
 
         if not init:
-            if self.jobInfoDic[self.currentJob]['status'] == 'PEND':
-                warningMessage = '*Warning*: "' + str(self.currentJob) + '" is PEND job, cannot draw memory curve for it.'
-                self.guiWarning(warningMessage)
-            else:
+            if self.jobInfoDic[self.currentJob]['status'] != 'PEND':
                 # Generate memory curve with the specified job id
                 self.myDrawCurve.drawJobMemCurve(self.currentJob)
                 memCurveFig = str(config.tmpPath) + '/' + str(user) + '_' + str(self.currentJob) + '.png'
