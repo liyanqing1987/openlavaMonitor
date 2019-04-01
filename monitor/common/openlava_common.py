@@ -288,7 +288,9 @@ def getHostGroupMembers(hostGroupName):
     lines = os.popen('bmgroup ' + str(hostGroupName)).readlines()
 
     for line in lines:
-        if re.match('^' + str(hostGroupName) + ' .*$', line):
+        if re.search('No such user/host group', line):
+            break
+        elif re.match('^' + str(hostGroupName) + ' .*$', line):
             myList = line.split()
             hostList = myList[1:]
 
@@ -335,11 +337,25 @@ def getQueueHostInfo():
             if re.search('all hosts used by the OpenLava system', hostsString):
                 common.printWarning('*Warning* (getQueueHostInfo) : queue "' + str(queue) + '" is not well configured, all of the hosts are on the same queue.')
                 queueHostDic[queue] = getHostList()
-            elif re.match('.+/', hostsString):
-                hostGroupName = re.sub('/$', '', hostsString)
-                queueHostDic[queue] = getHostGroupMembers(hostGroupName)
             else:
-                queueHostDic[queue] = hostsString.split()
+                queueHostDic.setdefault(queue, [])
+                hostsList = hostsString.split()
+                for hosts in hostsList:
+                    if re.match('.+/', hosts):
+                        hostGroupName = re.sub('/$', '', hosts)
+                        hostList = getHostGroupMembers(hostGroupName)
+                        if len(hostList) > 0:
+                            queueHostDic[queue].extend(hostList)
+                    elif re.match('^(.+)\+\d+$', hosts):
+                        myMatch = re.match('^(.+)\+\d+$', hosts)
+                        hostGroupName = myMatch.group(1)
+                        hostList = getHostGroupMembers(hostGroupName)
+                        if len(hostList) == 0:
+                            queueHostDic[queue].append(hosts)
+                        else:
+                            queueHostDic[queue].extend(hostList)
+                    else:
+                        queueHostDic[queue].append(hosts)
 
     return(queueHostDic)
 
