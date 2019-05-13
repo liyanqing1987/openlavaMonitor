@@ -148,7 +148,7 @@ def getBjobsUfInfo(command='bjobs -u all -r -UF'):
                      'spanHostsCompile'           : re.compile('.*Requested Resources <.*span\[hosts=([1-9][0-9]*).*>.*'),
                      'rusageMemCompile'           : re.compile('.*Requested Resources <.*rusage\[mem=([1-9][0-9]*).*>.*'),
                      'startedOnCompile'           : re.compile('.*[sS]tarted on ([0-9]+ Hosts/Processors )?([^;,]+).*'),
-                     'startedTimeCompile'         : re.compile('(.*): [sS]tarted on.*'),
+                     'startedTimeCompile'         : re.compile('(.*): (\[\d+\])?\s*[sS]tarted on.*'),
                      'finishedTimeCompile'        : re.compile('(.*): (Done successfully|Exited with).*'),
                      'cpuTimeCompile'             : re.compile('.*The CPU time used is ([1-9][0-9]*) seconds.*'),
                      'memCompile'                 : re.compile('.*MEM: ([1-9][0-9]*) Mbytes.*'),
