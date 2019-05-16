@@ -971,11 +971,14 @@ class mainWindow(QMainWindow):
                     statusList = ['PEND', 'RUN', 'ALL']
                     self.setJobsTabStatusCombo(statusList)
 
-                    queueList = copy.deepcopy(self.queueList)
-                    queueList.remove(queue)
-                    queueList.insert(0, queue)
-                    queueList.insert(1, 'ALL')
-                    self.setJobsTabQueueCombo(queueList)
+                    if queue == 'ALL':
+                        self.setJobsTabQueueCombo()
+                    else:
+                        queueList = copy.deepcopy(self.queueList)
+                        queueList.remove(queue)
+                        queueList.insert(0, queue)
+                        queueList.insert(1, 'ALL')
+                        self.setJobsTabQueueCombo(queueList)
 
                     self.setJobsTabStartedOnCombo()
                     self.genJobsTabTable()
@@ -987,11 +990,14 @@ class mainWindow(QMainWindow):
                     statusList = ['RUN', 'PEND', 'ALL']
                     self.setJobsTabStatusCombo(statusList)
 
-                    queueList = copy.deepcopy(self.queueList)
-                    queueList.remove(queue)
-                    queueList.insert(0, queue)
-                    queueList.insert(1, 'ALL')
-                    self.setJobsTabQueueCombo(queueList)
+                    if queue == 'ALL':
+                        self.setJobsTabQueueCombo()
+                    else:
+                        queueList = copy.deepcopy(self.queueList)
+                        queueList.remove(queue)
+                        queueList.insert(0, queue)
+                        queueList.insert(1, 'ALL')
+                        self.setJobsTabQueueCombo(queueList)
 
                     self.setJobsTabStartedOnCombo()
                     self.genJobsTabTable()
