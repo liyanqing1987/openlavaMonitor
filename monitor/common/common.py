@@ -1,4 +1,5 @@
 import os
+import re
 import stat
 
 def printError(message):
@@ -134,11 +135,12 @@ def getJobRangeDic(jobList):
     jobRangeDic = {}
 
     for job in jobList:
+        jobOrg = job
+        job = re.sub('\[.*', '', job)
         jobHead = (int(int(job)/10000))*10000
         jobTail = jobHead + 9999
         jobRange = str(jobHead)  + '_' + str(jobTail)
-        if jobRange not in jobRangeDic:
-            jobRangeDic[jobRange] = []
-        jobRangeDic[jobRange].append(job)
+        jobRangeDic.setdefault(jobRange, [])
+        jobRangeDic[jobRange].append(jobOrg)
 
     return(jobRangeDic)
