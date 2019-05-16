@@ -168,6 +168,7 @@ class sampling:
         queueTableList = sqlite3_common.getSqlTableList(queueDbFile, queueDbConn)
         bqueuesDic = openlava_common.getBqueuesInfo()
         queueList = bqueuesDic['QUEUE_NAME']
+        queueList.append('ALL')
         queueHostDic = openlava_common.getQueueHostInfo()
         queueSqlDic = {}
 
@@ -188,7 +189,10 @@ class sampling:
                 queueSqlDic[queue]['keyString'] = keyString
 
             # Insert sql table value.
-            valueList = [self.sampleTime, bqueuesDic['NJOBS'][i], bqueuesDic['PEND'][i], bqueuesDic['RUN'][i], bqueuesDic['SUSP'][i]]
+            if queue == 'ALL':
+                valueList = [self.sampleTime, sum([int(i) for i in bqueuesDic['NJOBS']]), sum([int(i) for i in bqueuesDic['PEND']]), sum([int(i) for i in bqueuesDic['RUN']]), sum([int(i) for i in bqueuesDic['SUSP']])]
+            else:
+                valueList = [self.sampleTime, bqueuesDic['NJOBS'][i], bqueuesDic['PEND'][i], bqueuesDic['RUN'][i], bqueuesDic['SUSP'][i]]
             valueString = sqlite3_common.genSqlTableValueString(valueList)
             queueSqlDic[queue]['valueString'] = valueString
 
