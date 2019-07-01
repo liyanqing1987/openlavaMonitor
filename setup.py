@@ -85,7 +85,7 @@ setup(
     description=('openlavaMonitor is an open source software for openlava '
                  'data-collection, date-analysis and information display.'),
     long_description=read('README'),
-    license='MIT',
+    license='GPL',
     packages=find_packages(),
     include_package_data=True,
     scripts=[],
