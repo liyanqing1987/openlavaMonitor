@@ -26,7 +26,7 @@ else:
 
 
 ## Generate config file.
-print('\n>>> Generate config file.')
+print('>>> Generate config file.')
 
 installPath = os.getcwd()
 dbPath = str(installPath) + '/db'
@@ -85,4 +85,4 @@ for pythonFile in pythonFiles:
         sys.exit(1)
 
 
-print('Done, Please enjoy it.')
+print('\nDone, Please enjoy it.')
