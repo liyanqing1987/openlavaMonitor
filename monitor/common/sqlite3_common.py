@@ -3,11 +3,8 @@ import re
 import sys
 import sqlite3
 
-# Import openlavaMonitor packages.
-if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
-    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
-
-from monitor.common import common
+sys.path.append('MONITORPATH')
+from common import common
 
 def connectDbFile(dbFile, mode='read'):
     result = 'passed'

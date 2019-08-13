@@ -11,15 +11,12 @@ from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QAction, qApp, Q
 from PyQt5.QtGui import QPixmap, QBrush, QFont
 from PyQt5.QtCore import Qt
 
-# Import openlavaMonitor packages.
-if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
-    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
-
-from monitor.common import common
-from monitor.common import openlava_common
-from monitor.common import pyqt5_common
-from monitor.conf import config
-from monitor.bin import bmonitor
+sys.path.append('MONITORPATH')
+from common import common
+from common import openlava_common
+from common import pyqt5_common
+from conf import config
+from bin import bmonitor
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 

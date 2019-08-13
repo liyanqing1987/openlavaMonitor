@@ -9,14 +9,11 @@ import time
 import copy
 from multiprocessing import Process
 
-# Import openlavaMonitor packages.
-if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
-    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
-
-from monitor.conf import config
-from monitor.common import common
-from monitor.common import openlava_common
-from monitor.common import sqlite3_common
+sys.path.append('MONITORPATH')
+from conf import config
+from common import common
+from common import openlava_common
+from common import sqlite3_common
 
 os.environ["PYTHONUNBUFFERED"]="1"
 

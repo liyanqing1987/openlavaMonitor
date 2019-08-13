@@ -4,11 +4,8 @@ import sys
 import collections
 import subprocess
 
-# Import openlavaMonitor packages.
-if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
-    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
-
-from monitor.common import common
+sys.path.append('MONITORPATH')
+from common import common
 
 def getCommandDict(command):
     """

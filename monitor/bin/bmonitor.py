@@ -7,14 +7,11 @@ import sys
 import getpass
 import datetime
 
-# Import openlavaMonitor packages.
-if ('openlavaMonitor_development_path' in os.environ) and os.path.exists(os.environ['openlavaMonitor_development_path']):
-    sys.path.insert(0, os.environ['openlavaMonitor_development_path'])
-
-from monitor.bin import bmonitorGUI
-from monitor.conf import config
-from monitor.common import common
-from monitor.common import sqlite3_common
+sys.path.append('MONITORPATH')
+from bin import bmonitorGUI
+from conf import config
+from common import common
+from common import sqlite3_common
 
 os.environ["PYTHONUNBUFFERED"]="1"
 

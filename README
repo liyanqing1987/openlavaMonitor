@@ -1,3 +1,5 @@
+Thanks for downloading openlavaMonitor.
+
 openlavaMonitor is an open source software for openlava data-collection,
 data-analysis and information-display.
 
@@ -7,11 +9,12 @@ install -> configuration -> sampling -> bmonitor
 
 
 INSTALL:
+To install it, make sure you have Python 3.5 (or greater version) installed,
+you can also install Anaconda3-4.2.0 (or greater version) to solve packge
+dependency. Then run below command to install it:
 Come into install directory, then execute below command.
 
-    python setup.py development.
-
-For more details please see file "INSTALL".
+    python3 install.py
 
 
 CONFIGURATION:

@@ -56,7 +56,7 @@ else:
 ## Replace string "PYTHONPATH" into the real python path on all of the python files.
 print('>>> Update python path for main executable programs.')
 
-pythonFiles = ['monitor/bin/bsample.py', 'monitor/bin/bmonitor.py', 'monitor/bin/bmonitorGUI.py', 'monitor/tools/seedb.py']
+pythonFiles = ['monitor/bin/bmonitor.py', 'monitor/bin/bmonitorGUI.py', 'monitor/bin/bsample.py', 'monitor/tools/seedb.py']
 currentPython = sys.executable
 currentPythonEscaping = re.sub('/', '\/', currentPython)
 
@@ -69,29 +69,20 @@ for pythonFile in pythonFiles:
         sys.exit(1)
 
 
-## Set setup settings.
-print('\n>>> For setup settings.')
+## Replace string "MONITORPATH" into the real monitor directory path on all of the python files.
+print('>>> Update monitor directory path for main executable programs.')
 
-def read(fname):
-    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
-        return f.read()
+pythonFiles = ['monitor/bin/bmonitor.py', 'monitor/bin/bmonitorGUI.py', 'monitor/bin/bsample.py', 'monitor/common/openlava_common.py', 'monitor/common/sqlite3_common.py', 'monitor/tools/seedb.py']
+monitorPath = str(installPath) + '/monitor'
+monitorPathEscaping = re.sub('/', '\/', monitorPath)
 
-setup(
-    name='openlavaMonitor',
-    version='2.0',
-    author='yanqing.li',
-    author_email='liyanqing1987@163.com',
-    url='https://github.com/liyanqing1987/openlavaMonitor/',
-    description=('openlavaMonitor is an open source software for openlava '
-                 'data-collection, date-analysis and information display.'),
-    long_description=read('README'),
-    license='GPL',
-    packages=find_packages(),
-    include_package_data=True,
-    scripts=[],
-    entry_points={},
-    install_requires=[],
-    zip_safe=False,
-    classifiers=[],
-    project_urls={},
-)
+for pythonFile in pythonFiles:
+    try:
+        command = "sed -i 's/MONITORPATH/" + str(monitorPathEscaping) + "/g' " + str(pythonFile)
+        os.system(command)
+    except Exception as error:
+        print('*Error*: Failed on replacing real monitor directory path on file "' + str(pythonFile) + '": ' + str(error))
+        sys.exit(1)
+
+
+print('Done, Please enjoy it.')
