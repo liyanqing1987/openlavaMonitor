@@ -112,7 +112,7 @@ def getSqlTableKeyList(dbFile, orig_conn, tableName):
 
     return(keyList)
 
-def getSqlTableData(dbFile, orig_conn, tableName, keyList=[]):
+def getSqlTableData(dbFile, orig_conn, tableName, keyList=[], limit=0):
     """
     With specified dbFile-tableName, get all data from specified keyList.
     """
@@ -124,6 +124,10 @@ def getSqlTableData(dbFile, orig_conn, tableName, keyList=[]):
 
     try:
         command = "SELECT * FROM '" + str(tableName) + "'"
+
+        if limit != 0:
+            command = str(command) + ' limit ' + str(limit)
+
         results = curs.execute(command)
         allItems = results.fetchall()
         tableKeyList = [tuple[0] for tuple in curs.description]
