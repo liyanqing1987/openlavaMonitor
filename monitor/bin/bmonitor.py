@@ -18,7 +18,7 @@ os.environ["PYTHONUNBUFFERED"]="1"
 class drawCurve():
     def __init__(self):
         self.user = getpass.getuser()
-        self.queueDbFile= str(config.dbPath) + '/queue.db'
+        self.queueDbFile= str(config.dbPath) + '/monitor/queue.db'
 
         (self.queueDbFileConnectResult, self.queueDbConn) = sqlite3_common.connectDbFile(self.queueDbFile)
         if self.queueDbFileConnectResult == 'failed':
@@ -38,7 +38,7 @@ class drawCurve():
         jobRangeDic = common.getJobRangeDic([job,])
         jobRangeList = list(jobRangeDic.keys())
         jobRange = jobRangeList[0]
-        self.jobDbFile= str(config.dbPath) + '/job/' + str(jobRange) + '.db'
+        self.jobDbFile= str(config.dbPath) + '/monitor/job/' + str(jobRange) + '.db'
 
         (self.jobDbFileConnectResult, self.jobDbConn) = sqlite3_common.connectDbFile(self.jobDbFile)
         if self.jobDbFileConnectResult == 'failed':

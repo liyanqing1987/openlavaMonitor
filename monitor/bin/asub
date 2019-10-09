@@ -1,0 +1,181 @@
+#!PYTHONPATH
+# -*- coding: utf-8 -*-
+
+import os
+import re
+import sys
+import getpass
+
+sys.path.append('MONITORPATH')
+from common import common
+from common import sqlite3_common
+from conf import config
+
+os.environ["PYTHONUNBUFFERED"]="1"
+
+class asub():
+    def __init__(self):
+        self.user = getpass.getuser()
+        self.currentDir = os.getcwd()
+
+    def parseArgs(self):
+        processorCompile = re.compile('^-n$')
+        resourceCompile = re.compile('^-R$')
+        rusageMemCompile = re.compile('^rusage.*\[mem=.*\]$')
+        spanHostsCompile = re.compile('^span.*\[hosts=.*\]$')
+
+        self.processorSet = False
+        self.resourceSet = False
+        self.rusageMemSet = False
+        self.spanHostsSet = False
+
+        self.bsubCommandList = []
+
+        for i in range(1, len(sys.argv)):
+            argument = sys.argv[i]
+
+            if processorCompile.match(argument):
+                self.processorSet = True
+
+            if resourceCompile.match(argument):
+                self.resourceSet = True
+
+            if rusageMemCompile.search(argument):
+                self.rusageMemSet = True
+
+            if spanHostsCompile.search(argument):
+                self.spanHostsSet = True
+
+            self.bsubCommandList.append(argument)
+
+        self.command = sys.argv[-1]
+
+    def getUserResourceData(self):
+        self.userCpuUsage = 0
+        self.userMemUsage = 0
+        userCommandCpuUsageList = []
+        userCommandMemUsageList = []
+
+        dbFile = str(config.dbPath) + '/resource/user/' + str(self.user) + '.db'
+        (result, dbConn) = sqlite3_common.connectDbFile(dbFile)
+
+        if result != 'passed':
+            print('*Error*: Failed on connecting sqlite3 database "' + str(dbFile) + '".')
+        else:
+            tableList = sqlite3_common.getSqlTableList(dbFile, dbConn)
+            tableName = self.user
+            dataDic = sqlite3_common.getSqlTableData(dbFile, dbConn, tableName)
+
+            if not dataDic:
+                print('*Warning*: Not find any history data for user "' + str(self.user) + '".')
+            else:
+                for i in range(len(dataDic['COMMAND'])):
+                    status = dataDic['STATUS'][i].strip()
+
+                    if status == 'DONE':
+                        cwd = dataDic['CWD'][i].strip()
+                        command = dataDic['COMMAND'][i].strip()
+                        cpuAvg = dataDic['CPU_AVG'][i].strip()
+
+                        if cpuAvg != 'NA':
+                            cpuAvg = int(float(cpuAvg)) + 1
+
+                        memPeak = dataDic['MEM_PEAK'][i].strip()
+
+                        if memPeak != 'NA':
+                            memPeak = re.sub('G', '', memPeak)
+                            memPeak = int(1000*float(memPeak))
+
+                        if (cwd == self.currentDir) and (command == self.command):
+                            if cpuAvg != 'NA':
+                                self.userCpuUsage = max(self.userCpuUsage, cpuAvg)
+                            if memPeak != 'NA':
+                                self.userMemUsage = max(self.userMemUsage, memPeak)
+                        elif command == self.command:
+                            if cpuAvg != 'NA':
+                                userCommandCpuUsageList.append(cpuAvg)
+                            if memPeak != 'NA':
+                                userCommandMemUsageList.append(memPeak)
+
+                if self.userCpuUsage == 0:
+                    if len(userCommandCpuUsageList) > 0:
+                        self.userCpuUsage = int(sum(userCommandCpuUsageList)/len(userCommandCpuUsageList))
+                        print('*Notice*: Get cpu average usage history "' + str(self.userCpuUsage) + '" for the user same COMMAND.')
+                    else:
+                        print('*Warning*: Not get cpu usage information from history data.')
+                else:
+                    print('*Notice*: Get cpu usage history "' + str(self.userCpuUsage) + '" for the user same CWD/COMMAND.')
+
+                if self.userMemUsage == 0:
+                    if len(userCommandMemUsageList) > 0:
+                        self.userMemUsage = int(max(userCommandMemUsageList))
+                        print('*Notice*: Get mem max usage history "' + str(self.userMemUsage) + '" for the user same COMMAND.')
+                    else:
+                        print('*Warning*: Not get memory usage information from history data.')
+                else:
+                    print('*Notice*: Get mem usage history "' + str(self.userMemUsage) + '" for the user same CWD/COMMAND.')
+
+    def setProcessor(self):
+        if self.userCpuUsage >= 2:
+            print('*Notice*: Add processor information "' + str(self.userCpuUsage) + '" into bsub setting.')
+            self.bsubCommand = str(self.bsubCommand) + ' -n ' + str(self.userCpuUsage)
+
+    def setRusageMem(self):
+        if self.userMemUsage != 0:
+            print('*Notice*: Add rusage memory information "' + str(self.userMemUsage) + '" into bsub setting.')
+            self.bsubCommand = str(self.bsubCommand) + ' -R "rusage[mem=' + str(self.userMemUsage) + ']"'
+
+    def addOriginalSetting(self):
+        emptySpaceCompile = re.compile('\s+')
+        apostropheCompile = re.compile("'")
+        doubleQuotesCompile = re.compile('"')
+
+        for argument in self.bsubCommandList:
+            if emptySpaceCompile.search(argument):
+                if apostropheCompile.search(argument) and not doubleQuotesCompile.search(argument):
+                    argument = '"' + str(argument) + '"'
+                elif not apostropheCompile.search(argument) and doubleQuotesCompile.search(argument):
+                    argument = "'" + str(argument) + "'"
+                elif not apostropheCompile.search(argument) and not doubleQuotesCompile.search(argument):
+                    argument = '"' + str(argument) + '"'
+
+            self.bsubCommand = str(self.bsubCommand) + ' ' + str(argument)
+
+    def runBsub(self):
+        try:
+            os.system(self.bsubCommand)
+        except Exception as error:
+            print('*Error*: Failed on running below bsub command.')
+            print('         ' + str(self.bsubCommand))
+
+    def asub(self):
+        print('*Notice*: bsub command must be with double quotes "" like below.')
+        print('          bsub *** "COMMAND"')
+        self.parseArgs()
+        self.bsubCommand = 'bsub'
+
+        if (not self.processorSet) or (not self.rusageMemSet):
+            self.getUserResourceData()
+
+            if not self.processorSet:
+                self.setProcessor()
+
+            if not self.rusageMemSet:
+                self.setRusageMem()
+
+        self.addOriginalSetting()
+
+        print('*Notice*: Final bsub setting is as below.')
+        print('          ' + str(self.bsubCommand))
+
+        self.runBsub()
+
+################
+# Main Process #
+################
+def main():
+    myAsub = asub()
+    myAsub.asub()
+
+if __name__ == '__main__':
+    main()

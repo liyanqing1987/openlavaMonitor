@@ -6,7 +6,6 @@ import sys
 import argparse
 import datetime
 import time
-import copy
 from multiprocessing import Process
 
 sys.path.append('MONITORPATH')
@@ -64,7 +63,15 @@ class sampling:
         self.userSampling = userSampling
 
         self.interval = interval
-        self.dbPath = config.dbPath
+        self.dbPath = str(config.dbPath) + '/monitor'
+        jobDbPath = str(self.dbPath) + '/job'
+    
+        if not os.path.exists(jobDbPath):
+            try:
+                os.system('mkdir -p ' + str(jobDbPath))
+            except:
+                print('*Error*: Failed on creating sqlite job db directory "' + str(jobDbPath) + '".')
+                sys.exit(1)
 
     def getDateInfo(self):
         self.sampleTime = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
@@ -166,7 +173,6 @@ class sampling:
         bqueuesDic = openlava_common.getBqueuesInfo()
         queueList = bqueuesDic['QUEUE_NAME']
         queueList.append('ALL')
-        queueHostDic = openlava_common.getQueueHostInfo()
         queueSqlDic = {}
 
         keyList = ['sampleTime', 'NJOBS', 'PEND', 'RUN', 'SUSP']

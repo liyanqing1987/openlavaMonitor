@@ -1,0 +1,15 @@
+Tool "batchRun.py" is used to start tool "jobResourceSample.py"
+on all openlava hosts.
+Tool "jobResourceSample.py" is used to sample job resource 
+(cpu/memory) usage data in real time on specified openlava host.
+Tool "jobResourceMonitor.py" is used to analyze job resource
+data and save user job resource data.
+
+
+Suggest to start sampling job resource with crontab, below is an example.
+====
+# Sample job resource usage on every openlava hosts (Frequency : 5 minutes)
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/batchRun.py
+# Monitor user job resource usage (Frequency : 5 minutes)
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/jobResourceMonitor.py
+====

@@ -1,6 +1,10 @@
 import os
 import re
+import sys
 import stat
+import pexpect
+import datetime
+import subprocess
 
 def printError(message):
     """
@@ -144,3 +148,47 @@ def getJobRangeDic(jobList):
         jobRangeDic[jobRange].append(jobOrg)
 
     return(jobRangeDic)
+
+def subprocessPopen(command, mystdin=subprocess.PIPE, mystdout=subprocess.PIPE, mystderr=subprocess.PIPE):
+    """
+    Run system command with subprocess.Popen, get returncode/stdout/stderr.
+    """
+    SP = subprocess.Popen(command, shell=True, stdin=mystdin, stdout=mystdout, stderr=mystderr)
+    (stdout, stderr) = SP.communicate()
+    return(SP.returncode, stdout, stderr)
+
+def sshRun(host, inputCommand, timeout=20):
+    """
+    (ssh) Login specified host with specified account, and run specified command.
+    Return the command output.
+    """
+    outputList = []
+    command = 'ssh -tt ' + str(host) + ' "' + str(inputCommand) + '"'
+
+    try:
+        child = pexpect.spawn(command, timeout=timeout)
+    except Exception as error:
+        printError('*Error*: Failed on logining "' + str(host) + '" and executing specified command: ' + str(error))
+        sys.exit(1)
+
+    child.expect(pexpect.EOF)
+    output = str(child.before, encoding='utf-8')
+    lines = output.split('\n')
+
+    for line in lines:
+        if not re.match('^\s*$', line) and not re.match('^Connection to .* closed.\s*$', line):
+            outputList.append(line.strip())
+
+    return(outputList)
+
+def debug(message, clear=False):
+    """
+    If environment variable 'METHODOLOGY_DEBUG' is set to '1', print the debug message.
+    """
+    if "METHODOLOGY_DEBUG" in os.environ:
+        if os.environ["METHODOLOGY_DEBUG"] == "1":
+            if clear:
+                print(message)
+            else:
+                currentTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print('DEBUG [' + str(currentTime) + ']: ' + str(message))

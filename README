@@ -39,10 +39,10 @@ Below is the suggested crontab setting on sampling data.
 
 SHELL=/bin/csh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-*/10 * * * * <INSTALL_PATH>/monitor/bin/bsample.py -j
-*/10 * * * * <INSTALL_PATH>/monitor/bin/bsample.py -q
+*/5 * * * * <INSTALL_PATH>/monitor/bin/bsample.py -j
+*/5 * * * * <INSTALL_PATH>/monitor/bin/bsample.py -q
 
-Suggested sampling frequency is 10 minutes.
+Suggested sampling frequency is 5 minutes.
 You can also sample host/load/user info with bsample.py.
 
 
@@ -58,3 +58,11 @@ For more details please see file "LICENSE".
 
 DOC:
 For more documents please see files under "docs".
+
+
+OTHERS:
+Tool "asub" is an wrapper of "bsub", it is used to set cpu/memory
+reservation automatically on bsub setting based on history data.
+Details please see below documents:
+docs/asub.txt
+docs/batchRun.txt

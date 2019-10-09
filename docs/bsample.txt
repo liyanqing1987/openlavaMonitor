@@ -23,10 +23,10 @@ to do the sampling work in a loop.
 
 Suggest to start sampling job with crontab, below is an example.
 ====
-# Sampling job/queue/host/load/user infos for openlavaMonitor (Frequency : 10 minutes)
-*/10 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -j
-*/10 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -q
-*/10 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -H
-*/10 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -l
-*/10 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -u
+# Sampling job/queue/host/load/user infos for openlavaMonitor (Frequency : 5 minutes)
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -j
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -q
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -H
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -l
+*/5 * * * * [ROOT]/openlavaMonitor/monitor/bin/bsample.py -u
 ====

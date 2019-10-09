@@ -234,7 +234,7 @@ def insertIntoSqlTable(dbFile, orig_conn, tableName, valueString, commit=True):
     except Exception as error:
         common.printError('*Error* (insertIntoSqlTable) : Failed on inserting specified values into table "' + str(tableName) + '" on db file "' + str(dbFile) + '": ' + str(error))
 
-def genSqlTableKeyString(keyList):
+def genSqlTableKeyString(keyList, keyTypeList=[], autoIncrement=False):
     """
     Switch the input keyList into the sqlite table key string.
     """
@@ -242,16 +242,23 @@ def genSqlTableKeyString(keyList):
 
     for i in range(len(keyList)):
         key = keyList[i]
-        if i == 0:
-            keyString = str(keyString) + "'" + str(key) + "' VARCHAR(255) PRIMARY KEY,"
-        elif i == len(keyList)-1:
-            keyString = str(keyString) + " '" + str(key) + "' VARCHAR(255));"
+        if len(keyTypeList) == len(keyList):
+            keyType = keyTypeList[i]
         else:
-            keyString = str(keyString) + " '" + str(key) + "' VARCHAR(255),"
+            keyType = 'VARCHAR(255)'
+        if i == 0:
+            if autoIncrement:
+                keyString = str(keyString) + "id INTEGER PRIMARY KEY AUTOINCREMENT, '" + str(key) + "' " + str(keyType) + ","
+            else:
+                keyString = str(keyString) + "'" + str(key) + "' " + str(keyType) + " PRIMARY KEY,"
+        elif i == len(keyList)-1:
+            keyString = str(keyString) + " '" + str(key) + "' " + str(keyType) + ");"
+        else:
+            keyString = str(keyString) + " '" + str(key) + "' " + str(keyType) + ","
 
     return(keyString)
 
-def genSqlTableValueString(valueList):
+def genSqlTableValueString(valueList, autoIncrement=False):
     """
     Switch the input valueList into the sqlite table value string.
     """
@@ -262,7 +269,10 @@ def genSqlTableValueString(valueList):
         if re.search("'", str(value)):
             value = str(value).replace("'", "''")
         if i == 0:
-            valueString = str(valueString) + "'" + str(value) + "',"
+            if autoIncrement:
+                valueString = str(valueString) + "NULL, '" + str(value) + "',"
+            else:
+                valueString = str(valueString) + "'" + str(value) + "',"
         elif i == len(valueList)-1:
             valueString = str(valueString) + " '" + str(value) + "');"
         else:

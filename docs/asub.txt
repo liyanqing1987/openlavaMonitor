@@ -1,0 +1,12 @@
+Tool "asub" is an wrapper of "bsub", it is used to set cpu/memory
+reservation automatically on bsub setting based on history data.
+The usage of "asub" is as below:
+====
+asub  BSUB_OPTIONS  "COMMAND"
+====
+
+If there is no '-n SLOTS' or '-R "rusage[mem=MEM]"' setting on 
+BSUB_OPTIONS, it will add the cpu/memory reservation setting 
+automatically based on history data.
+History data is from tool "batchRun.py", details please see 
+document "batchRun.txt" on how to sample and save history data.
