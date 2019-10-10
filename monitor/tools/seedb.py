@@ -4,11 +4,9 @@ import os
 import re
 import sys
 import argparse
-import sqlite3
 
-sys.path.append('MONITORPATH')
+sys.path.insert(0, 'MONITORPATH')
 from conf import config
-from common import common
 from common import sqlite3_common
 
 def readArgs():
@@ -21,11 +19,17 @@ def readArgs():
                         required=True,
                         help='Required argument, specify the datebase file.')
     parser.add_argument("-t", "--tables",
-                        nargs='+', default=[],
+                        nargs='+',
+                        default=[],
                         help='Specify the tables you want to review, make sure the tables exist.')
     parser.add_argument("-k", "--keys",
-                        nargs='+', default=[],
+                        nargs='+',
+                        default=[],
                         help='Specify the table keys you want to review, make sure the table keys exist.')
+    parser.add_argument("-n", "--number",
+                        type=int,
+                        default=0,
+                        help='How many lines you want to see.')
 
     args = parser.parse_args()
 
@@ -48,7 +52,7 @@ def readArgs():
             print('*Error*: ' + str(args.database) + ': No such database file.')
             sys.exit(1)
 
-    return(args.database, args.tables, args.keys)
+    return(args.database, args.tables, args.keys, args.number)
 
 def getLength(inputList):
     """
@@ -63,7 +67,7 @@ def getLength(inputList):
 
     return(length)
 
-def seedb(dbFile, tableList, keyList):
+def seedb(dbFile, tableList, keyList, number):
     print('DB FILE : ' + str(dbFile))
 
     if len(tableList) == 0:
@@ -77,7 +81,7 @@ def seedb(dbFile, tableList, keyList):
         for table in tableList:
             print('TABLE : ' + str(table))
             print('========')
-            dataDic = sqlite3_common.getSqlTableData(dbFile, '', table, keyList)
+            dataDic = sqlite3_common.getSqlTableData(dbFile, '', table, keyList, number)
             keyList = list(dataDic.keys())
             if len(keyList) == 0:
                 print('*Error*: No valid keyList is specified.')
@@ -105,8 +109,8 @@ def seedb(dbFile, tableList, keyList):
 # Main Process #
 ################
 def main():
-    (dbFile, tableList, keyList) = readArgs()
-    seedb(dbFile, tableList, keyList)
+    (dbFile, tableList, keyList, number) = readArgs()
+    seedb(dbFile, tableList, keyList, number)
 
 if __name__ == '__main__':
     main()
