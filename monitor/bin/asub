@@ -36,12 +36,14 @@ class asub():
 
             if processorCompile.match(argument):
                 self.processorSet = True
+                print('Find cpu reservation setting on asub arguments, will not reset it.')
 
             if resourceCompile.match(argument):
                 self.resourceSet = True
 
             if rusageMemCompile.search(argument):
                 self.rusageMemSet = True
+                print('Find memory reservation setting on asub arguments, will not reset it.')
 
             if spanHostsCompile.search(argument):
                 self.spanHostsSet = True
@@ -51,8 +53,24 @@ class asub():
         self.command = sys.argv[-1]
 
     def getUserResourceData(self):
+        """
+        There are four kinds of history job resource data on sqlite database:
+        CPU_AVG  : average cpu usage for specified job.
+        CPU_PEAK : peak cpu usage for specified job.
+        MEM_AVG  : average memory usage for specified job.
+        MEM_PEAK : peak memory usage for specified job.
+
+        Default policy:
+        1. Find CWD and COMMAND history data on the sqlite database;
+           Select peak CPU_AVG and peak MEM_PEAK.
+        2. Find COMMAND (but no CWD) history data on the sqlite database;
+           Select average CPU_AVG and average MEM_PEAK.
+        3. Not find CWD or COMMAND history data on the dqlite database;
+           Do not add cpu/memory reservation setting.
+        """
         self.userCpuUsage = 0
         self.userMemUsage = 0
+        mark = 3
         userCommandCpuUsageList = []
         userCommandMemUsageList = []
 
@@ -61,6 +79,8 @@ class asub():
 
         if result != 'passed':
             print('*Error*: Failed on connecting sqlite3 database "' + str(dbFile) + '".')
+            print('         Will not add cpu/memory reservation setting.')
+            print('         Please contact asub administrator for further check.')
         else:
             tableList = sqlite3_common.getSqlTableList(dbFile, dbConn)
             tableName = self.user
@@ -68,6 +88,7 @@ class asub():
 
             if not dataDic:
                 print('*Warning*: Not find any history data for user "' + str(self.user) + '".')
+                print('           Will not add cpu/memory reservation setting.')
             else:
                 for i in range(len(dataDic['COMMAND'])):
                     status = dataDic['STATUS'][i].strip()
@@ -87,42 +108,52 @@ class asub():
                             memPeak = int(1000*float(memPeak))
 
                         if (cwd == self.currentDir) and (command == self.command):
+                            mark = 1
                             if cpuAvg != 'NA':
                                 self.userCpuUsage = max(self.userCpuUsage, cpuAvg)
                             if memPeak != 'NA':
                                 self.userMemUsage = max(self.userMemUsage, memPeak)
                         elif command == self.command:
+                            if mark != 1:
+                                mark = 2
                             if cpuAvg != 'NA':
                                 userCommandCpuUsageList.append(cpuAvg)
                             if memPeak != 'NA':
                                 userCommandMemUsageList.append(memPeak)
 
+                if mark == 1:
+                    print('Find CWD and COMMAND history data on sqlite database.')
+                elif mark == 2:
+                    print('Find COMMAND history data on sqlite database.')
+                elif mark == 3:
+                    print('Not find CWD or COMMAND history data on sqlite database.')
+
                 if self.userCpuUsage == 0:
                     if len(userCommandCpuUsageList) > 0:
                         self.userCpuUsage = int(sum(userCommandCpuUsageList)/len(userCommandCpuUsageList))
-                        print('*Notice*: Get cpu average usage history "' + str(self.userCpuUsage) + '" for the user same COMMAND.')
+                        print('    Average of job CPU_AVG : ' + str(self.userCpuUsage))
                     else:
-                        print('*Warning*: Not get cpu usage information from history data.')
+                        print('*Warning*: Not get history cpu data from sqlite database.')
                 else:
-                    print('*Notice*: Get cpu usage history "' + str(self.userCpuUsage) + '" for the user same CWD/COMMAND.')
+                    print('    Peak of job CPU_AVG : ' + str(self.userCpuUsage))
 
                 if self.userMemUsage == 0:
                     if len(userCommandMemUsageList) > 0:
-                        self.userMemUsage = int(max(userCommandMemUsageList))
-                        print('*Notice*: Get mem max usage history "' + str(self.userMemUsage) + '" for the user same COMMAND.')
+                        self.userMemUsage = int(sum(userCommandMemUsageList)/len(userCommandMemUsageList))
+                        print('    Average of job MEM_PEAK : ' + str(self.userMemUsage))
                     else:
-                        print('*Warning*: Not get memory usage information from history data.')
+                        print('*Warning*: Not get history memory data from sqlite database.')
                 else:
-                    print('*Notice*: Get mem usage history "' + str(self.userMemUsage) + '" for the user same CWD/COMMAND.')
+                    print('    Peak of job MEM_PEAK : ' + str(self.userMemUsage))
 
     def setProcessor(self):
         if self.userCpuUsage >= 2:
-            print('*Notice*: Add processor information "' + str(self.userCpuUsage) + '" into bsub setting.')
+            print('Add cpu reservation "' + str(self.userCpuUsage) + '" into bsub setting.')
             self.bsubCommand = str(self.bsubCommand) + ' -n ' + str(self.userCpuUsage)
 
     def setRusageMem(self):
         if self.userMemUsage != 0:
-            print('*Notice*: Add rusage memory information "' + str(self.userMemUsage) + '" into bsub setting.')
+            print('Add memory reservation "' + str(self.userMemUsage) + '" into bsub setting.')
             self.bsubCommand = str(self.bsubCommand) + ' -R "rusage[mem=' + str(self.userMemUsage) + ']"'
 
     def addOriginalSetting(self):
@@ -149,8 +180,14 @@ class asub():
             print('         ' + str(self.bsubCommand))
 
     def asub(self):
-        print('*Notice*: bsub command must be with double quotes "" like below.')
-        print('          bsub *** "COMMAND"')
+        print('Notice:')
+        print('1. asub is a wrapper of bsub.')
+        print('2. asub only help you set cpu&memory reservation if they are not specified.')
+        print('   You should set other bsub setting by yourself.')
+        print('3. Job command must be with double quotes "" like below:')
+        print('   bsub *** "COMMAND"')
+        print('')
+
         self.parseArgs()
         self.bsubCommand = 'bsub'
 
@@ -167,6 +204,7 @@ class asub():
 
         print('*Notice*: Final bsub setting is as below.')
         print('          ' + str(self.bsubCommand))
+        print('')
 
         self.runBsub()
 
