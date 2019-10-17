@@ -22,12 +22,10 @@ class asub():
         processorCompile = re.compile('^-n$')
         resourceCompile = re.compile('^-R$')
         rusageMemCompile = re.compile('^rusage.*\[mem=.*\]$')
-        spanHostsCompile = re.compile('^span.*\[hosts=.*\]$')
 
         self.processorSet = False
         self.resourceSet = False
         self.rusageMemSet = False
-        self.spanHostsSet = False
 
         self.bsubCommandList = []
 
@@ -42,11 +40,11 @@ class asub():
                 self.resourceSet = True
 
             if rusageMemCompile.search(argument):
-                self.rusageMemSet = True
-                print('Find memory reservation setting on asub arguments, will not reset it.')
-
-            if spanHostsCompile.search(argument):
-                self.spanHostsSet = True
+                if self.resourceSet:
+                    print('*Warning*: argument "-R" have been set, cannot set memory reservation automatically.')
+                else:
+                    self.rusageMemSet = True
+                    print('Find memory reservation setting on asub arguments, will not reset it.')
 
             self.bsubCommandList.append(argument)
 
@@ -154,7 +152,7 @@ class asub():
     def setRusageMem(self):
         if self.userMemUsage != 0:
             print('Add memory reservation "' + str(self.userMemUsage) + '" into bsub setting.')
-            self.bsubCommand = str(self.bsubCommand) + ' -R "rusage[mem=' + str(self.userMemUsage) + ']"'
+            self.bsubCommand = str(self.bsubCommand) + ' -R "span[hosts=1] rusage[mem=' + str(self.userMemUsage) + ']"'
 
     def addOriginalSetting(self):
         emptySpaceCompile = re.compile('\s+')
