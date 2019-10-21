@@ -22,10 +22,12 @@ class asub():
         processorCompile = re.compile('^-n$')
         resourceCompile = re.compile('^-R$')
         rusageMemCompile = re.compile('^rusage.*\[mem=.*\]$')
+        jobNameCompile = re.compile('^-J$')
 
         self.processorSet = False
         self.resourceSet = False
         self.rusageMemSet = False
+        self.jobNameSet = False
 
         self.bsubCommandList = []
 
@@ -45,6 +47,9 @@ class asub():
                 else:
                     self.rusageMemSet = True
                     print('Find memory reservation setting on asub arguments, will not reset it.')
+
+            if jobNameCompile.match(argument):
+                self.jobNameSet = True
 
             self.bsubCommandList.append(argument)
 
@@ -188,6 +193,9 @@ class asub():
 
         self.parseArgs()
         self.bsubCommand = 'bsub'
+
+        if not self.jobNameSet:
+            self.bsubCommand = str(self.bsubCommand) + ' -J ASUB'
 
         if (not self.processorSet) or (not self.rusageMemSet):
             self.getUserResourceData()
