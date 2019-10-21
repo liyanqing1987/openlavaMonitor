@@ -19,41 +19,44 @@ class asub():
         self.currentDir = os.getcwd()
 
     def parseArgs(self):
+        jobNameCompile = re.compile('^-J$')
         processorCompile = re.compile('^-n$')
         resourceCompile = re.compile('^-R$')
-        rusageMemCompile = re.compile('^rusage.*\[mem=.*\]$')
-        jobNameCompile = re.compile('^-J$')
+        rusageCompile = re.compile('rusage')
 
+        self.jobNameSet = False
         self.processorSet = False
         self.resourceSet = False
-        self.rusageMemSet = False
-        self.jobNameSet = False
+        self.resource = ''
+        self.rusageSet = False
 
         self.bsubCommandList = []
+        self.command = sys.argv[-1]
 
         for i in range(1, len(sys.argv)):
             argument = sys.argv[i]
 
-            if processorCompile.match(argument):
-                self.processorSet = True
-                print('Find cpu reservation setting on asub arguments, will not reset it.')
-
-            if resourceCompile.match(argument):
-                self.resourceSet = True
-
-            if rusageMemCompile.search(argument):
-                if self.resourceSet:
-                    print('*Warning*: argument "-R" have been set, cannot set memory reservation automatically.')
-                else:
-                    self.rusageMemSet = True
-                    print('Find memory reservation setting on asub arguments, will not reset it.')
-
             if jobNameCompile.match(argument):
                 self.jobNameSet = True
 
-            self.bsubCommandList.append(argument)
+            if processorCompile.match(argument):
+                self.processorSet = True
+                print('*Warning*: Find cpu reservation setting on asub arguments, will not reset it.')
 
-        self.command = sys.argv[-1]
+            if resourceCompile.match(argument):
+                self.resourceSet = True
+                continue
+            else:
+                if self.resourceSet and (self.resource == ''):
+                    self.resource = argument
+
+                    if rusageCompile.search(argument):
+                        self.rusageSet = True
+                        print('*Warning*: Find memory reservation setting on asub arguments, will not reset it.')
+                        self.bsubCommandList.append('-R')
+                        argument = '"' + str(argument) + '"'
+
+            self.bsubCommandList.append(argument)
 
     def getUserResourceData(self):
         """
@@ -154,10 +157,15 @@ class asub():
             print('Add cpu reservation "' + str(self.userCpuUsage) + '" into bsub setting.')
             self.bsubCommand = str(self.bsubCommand) + ' -n ' + str(self.userCpuUsage)
 
-    def setRusageMem(self):
+    def setRusage(self):
         if self.userMemUsage != 0:
             print('Add memory reservation "' + str(self.userMemUsage) + '" into bsub setting.')
-            self.bsubCommand = str(self.bsubCommand) + ' -R "span[hosts=1] rusage[mem=' + str(self.userMemUsage) + ']"'
+
+            if self.resourceSet:
+                self.resource = str(self.resource) + ' rusage[mem=' + str(self.userMemUsage) + ']'
+                self.bsubCommand = str(self.bsubCommand) + ' -R "' + str(self.resource) + '"'
+            else:
+                self.bsubCommand = str(self.bsubCommand) + ' -R "span[hosts=1] rusage[mem=' + str(self.userMemUsage) + ']"'
 
     def addOriginalSetting(self):
         emptySpaceCompile = re.compile('\s+')
@@ -197,14 +205,14 @@ class asub():
         if not self.jobNameSet:
             self.bsubCommand = str(self.bsubCommand) + ' -J ASUB'
 
-        if (not self.processorSet) or (not self.rusageMemSet):
+        if (not self.processorSet) or (not self.rusageSet):
             self.getUserResourceData()
 
             if not self.processorSet:
                 self.setProcessor()
 
-            if not self.rusageMemSet:
-                self.setRusageMem()
+            if not self.rusageSet:
+                self.setRusage()
 
         self.addOriginalSetting()
 
