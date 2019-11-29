@@ -282,7 +282,7 @@ def getHostGroupMembers(hostGroupName):
     ====
     """
     hostList = []
-    lines = os.popen('bmgroup ' + str(hostGroupName)).readlines()
+    lines = os.popen('bmgroup -r ' + str(hostGroupName)).readlines()
 
     for line in lines:
         if re.search('No such user/host group', line):
@@ -303,7 +303,7 @@ def getUserGroupMembers(userGroupName):
     ====
     """
     userList = []
-    lines = os.popen('bugroup ' + str(userGroupName)).readlines()
+    lines = os.popen('bugroup -r ' + str(userGroupName)).readlines()
 
     for line in lines:
         if re.match('^' + str(userGroupName) + ' .*$', line):

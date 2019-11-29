@@ -692,8 +692,9 @@ class mainWindow(QMainWindow):
             self.queueHostList = self.hostList
         else:
             for host in self.hostList:
-                if queue in hostQueueDic[host]:
-                    self.queueHostList.append(host)
+                if host in hostQueueDic:
+                    if queue in hostQueueDic[host]:
+                        self.queueHostList.append(host)
 
         self.hostsTabTable.setRowCount(len(self.queueHostList))
 
