@@ -578,15 +578,15 @@ class mainWindow(QMainWindow):
             j = j+1
             if str(jobDic[job]['rusageMem']) != '':
                 item = QTableWidgetItem()
-                rusageMemValue = int(jobDic[job]['rusageMem'])/1024
-                item.setData(Qt.DisplayRole, int(rusageMemValue))
+                rusageMemValue = round(int(jobDic[job]['rusageMem'])/1024, 1)
+                item.setData(Qt.DisplayRole, rusageMemValue)
                 self.jobsTabTable.setItem(i, j, item)
 
             j = j+1
             if str(jobDic[job]['mem']) != '':
                 item = QTableWidgetItem()
-                memValue = int(jobDic[job]['mem'])/1024
-                item.setData(Qt.DisplayRole, int(memValue))
+                memValue = round(int(jobDic[job]['mem'])/1024, 1)
+                item.setData(Qt.DisplayRole, memValue)
                 self.jobsTabTable.setItem(i, j, item)
 
             j = j+1
