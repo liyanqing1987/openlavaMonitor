@@ -268,14 +268,19 @@ class mainWindow(QMainWindow):
         self.updateJobTabFrame3(init=True)
 
         # Job name must be a string of numbers.
-        if not re.match('^[0-9]+$', self.currentJob):
+        currentJob = self.currentJob
+
+        if re.match('^(\d+)(\[\d+\])?$', self.currentJob):
+            my_match = re.match('^(\d+)(\[\d+\])?$', self.currentJob)
+            currentJob = my_match.group(1)
+        else:
             warningMessage = '*Warning*: No valid job is specified!'
             self.guiWarning(warningMessage)
             return
 
         # Get job info
         print('Getting job information for job "' + str(self.currentJob) + '".')
-        self.jobInfoDic = openlava_common.getBjobsUfInfo(command='bjobs -UF ' + str(self.currentJob))
+        self.jobInfoDic = openlava_common.getBjobsUfInfo(command='bjobs -UF ' + str(currentJob))
 
         # Update the related frames with the job info.
         self.updateJobTabFrame1()
